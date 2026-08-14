@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Work Log</title>
+<title>Babos</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=IBM+Plex+Mono:wght@400&family=Noto+Sans+JP:wght@300;400;500&family=Noto+Sans+TC:wght@300;400;500&display=swap');
 
@@ -600,7 +600,7 @@ body.saver .saver-clock{opacity:.5}
 /* ===========================================================================
    i18n — すべての表示文字列をここに集約。言語切替は applyLang() のみで完結する。
    =========================================================================== */
-const APP_VERSION = '0.1.2';
+const APP_VERSION = '0.1.3';
 const APP_AUTHOR  = 'Shih-Bo Chiu';
 const APP_ORG     = '';
 
@@ -1320,7 +1320,7 @@ const TA = () => window.__TAURI__ || null;
 async function ask(msg){
   const t = TA();
   if(t?.dialog?.confirm){
-    try{ return await t.dialog.confirm(msg, { title:'Work Log', kind:'warning' }); }
+    try{ return await t.dialog.confirm(msg, { title:'Babos', kind:'warning' }); }
     catch(e){ return window.confirm(msg); }
   }
   return window.confirm(msg);
