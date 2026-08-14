@@ -1739,25 +1739,12 @@ function paintClock(){
   $('saverClock').querySelector('.n').textContent = alive + (T.saverCases || '');
   setTimeout(paintClock, 20000);
 }
-/* メニューバー・Dock ごと隠す本物のフルスクリーン。
-   一度クラッシュの容疑をかけたが、真因は CSS（.upper の block 化＋気泡の absolute 化）
-   の方だった。CSS を戻したうえで再導入する。
-   元々フルスクリーンだった場合は復帰時に戻さない。 */
-let wasFullscreen = false;
-
-async function setFullscreen(on){
-  const t = TA(); if(!t?.window?.getCurrentWindow) return;
-  try{
-    const w = t.window.getCurrentWindow();
-    if(on){
-      wasFullscreen = await w.isFullscreen();
-      if(!wasFullscreen) await w.setFullscreen(true);
-    }else if(!wasFullscreen){
-      await w.setFullscreen(false);
-    }
-  }catch(e){ console.warn('[work-log] fullscreen failed:', e); }
-}
-
+/* 【2026-08-14 断念】Tauri の setFullscreen は2度試して2度ともクラッシュ。
+   CSS 側の真因（.upper の block 化）を直した後でも落ちたため、この API 自体が
+   この環境で不安定と判断し、呼び出さない。
+   フルスクリーンで見たい場合は、アプリのウィンドウを先に macOS の
+   フルスクリーン（緑ボタン / Cmd+Ctrl+F）にしておけば、
+   セーバーは CSS でその全面を埋めるので同じ結果になる。 */
 /* 切替の瞬間はレイアウトが総入れ替えになる。その最中に毎フレーム
    12個の位置を書き換えると WebView が耐えられない可能性があるため、
    前後 900ms は物理の DOM 更新を止める。 */
@@ -1767,14 +1754,12 @@ function enterSaver(){
   physPaused = true;
   document.body.classList.add('saver');
   setTimeout(() => { physPaused = false; }, 900);
-  setTimeout(() => { if(saverOn) setFullscreen(true); }, 300);
   paintClock();
 }
 function exitSaver(){
   if(!saverOn) return;
   saverOn = false;
   physPaused = true;
-  setFullscreen(false);                 // 戻すのは即座に（キーを押した本人が待たされないよう）
   document.body.classList.remove('saver');
   setTimeout(() => { physPaused = false; }, 900);
 }
