@@ -90,7 +90,7 @@ input{font-family:inherit;color:inherit;background:none;border:none;outline:none
 :root[lang="ja"] .meta,:root[lang="zh-Hant"] .meta{
   font-family:var(--font-body);font-size:11.5px;letter-spacing:.04em;text-transform:none}
 
-.app{min-height:100vh;display:flex;flex-direction:column}
+.app{height:100vh;overflow:hidden;display:flex;flex-direction:column}
 
 /* ---- top bar ---- */
 .topbar{position:sticky;top:0;z-index:60;flex:none;height:60px;display:flex;
@@ -133,12 +133,16 @@ input{font-family:inherit;color:inherit;background:none;border:none;outline:none
 /* 位置はフィルタでは動かさない。サイズが変わったときだけ動き、その移動は補間する。 */
 .bub{position:absolute;border-radius:50%;cursor:pointer;background:var(--bub-fill);
   display:grid;place-items:center;color:var(--bub-text);font-weight:500;
-  font-size:12px;text-align:center;padding:6px;overflow:hidden;
+  text-align:center;padding:5px;overflow:hidden;
   opacity:var(--op,1);
-  transition:left .45s cubic-bezier(.4,0,.2,1),top .45s cubic-bezier(.4,0,.2,1),
-             width .45s cubic-bezier(.4,0,.2,1),height .45s cubic-bezier(.4,0,.2,1),
-             opacity .3s ease,box-shadow .25s ease,transform .18s ease}
+  transition:width .5s cubic-bezier(.4,0,.2,1),height .5s cubic-bezier(.4,0,.2,1),
+             opacity .3s ease,box-shadow .25s ease,transform .18s ease;
+  touch-action:none;will-change:left,top}
+.bub.dragging{cursor:grabbing;transform:scale(1.06);z-index:5}
 .bub:hover{transform:scale(1.05)}
+/* 円の中は横幅が限られるので、2行で打ち切って省略記号を出す */
+.bub span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow:hidden;max-width:76%;line-height:1.24;word-break:break-word}
 .bub.match{box-shadow:0 0 22px 5px var(--glow-match)}
 .bub.sel{box-shadow:0 0 34px 9px var(--glow-sel)}
 .bub.dim{opacity:0 !important;pointer-events:none}
@@ -162,7 +166,29 @@ input{font-family:inherit;color:inherit;background:none;border:none;outline:none
   padding-bottom:14px;border-bottom:1px solid var(--line)}
 .d-title{flex:1;min-width:0}
 .case-name{font-family:var(--font-display);font-weight:300;font-size:26px;
-  line-height:1.4;letter-spacing:-.41px;word-break:break-word}
+  line-height:1.4;letter-spacing:-.41px;word-break:break-word;
+  cursor:text;border-radius:4px;margin:-2px -6px;padding:2px 6px;transition:background .15s}
+.case-name:hover{background:var(--sel-bg)}
+/* 編集中の入力欄は見た目を元のテキストに合わせる（枠が出ると位置がずれるため） */
+/* サブ行（タイプ／クライアント）もその場で編集する。
+   空欄は「—」ではなく「＋ タイプ」と出す。押せると分からなければ機能は無いのと同じ。 */
+.sub-edit{cursor:text;border-radius:3px;padding:1px 5px;margin:0 -3px;
+  transition:background .15s,color .15s;display:inline-block}
+.sub-edit:hover{background:var(--sel-bg);color:var(--text)}
+.sub-edit.empty{color:var(--line)}
+.sub-edit.empty:hover{color:var(--fog)}
+.inline-ac{position:relative;display:inline-block;min-width:120px;vertical-align:baseline}
+.inline-ac .ac-list{min-width:190px;right:auto;left:-4px}
+.field-edit{font-family:inherit;font-size:inherit;letter-spacing:inherit;color:var(--text);
+  width:100%;min-width:110px;border:0;border-bottom:1px solid var(--fog);
+  background:none;padding:1px 4px}
+.name-edit{font-family:var(--font-display);font-weight:300;font-size:26px;
+  line-height:1.4;letter-spacing:-.41px;width:100%;
+  border:0;border-bottom:1px solid var(--fog);border-radius:0;
+  margin:-2px -6px;padding:2px 6px;background:none;color:var(--text)}
+.l-name .name-edit{font-family:var(--font-body);font-size:14px;font-weight:400;
+  letter-spacing:0;line-height:1.5;margin:0;padding:0 2px}
+.l-name{cursor:text}
 .case-sub{margin-top:5px}
 .icon-btn{width:28px;height:28px;border-radius:50%;border:1px solid var(--line);
   display:grid;place-items:center;flex:none;color:var(--fog);font-size:13px;
@@ -244,10 +270,13 @@ a.link-path:hover{color:var(--text)}
 .ac-item:hover,.ac-item.on{background:var(--sel-bg);color:var(--text)}
 
 /* ---- lower ---- */
-.lower{flex:1 0 auto;display:grid;grid-template-columns:220px 1fr;
-  align-items:start;min-height:40vh}
-.side{border-right:1px solid var(--line);padding:16px 0;
-  position:sticky;top:60px;align-self:start}
+/* 区切り線は擬似要素ではなく背景で描く。
+   ::before は grid の第一子として 1 列目を占領してしまうため。
+   背景なら常にコンテナの高さ＝下端まで届き、レイアウトにも影響しない。 */
+.lower{flex:1;min-height:0;overflow-y:auto;display:grid;
+  grid-template-columns:220px 1fr;align-items:start;
+  background:linear-gradient(var(--line),var(--line)) no-repeat 220px 0 / 1px 100%}
+.side{padding:16px 0;position:sticky;top:0;align-self:start}
 .side-grp{padding:0 16px 18px}
 .side-grp .d-label{padding:0 8px;margin-bottom:6px}
 .side-item{display:flex;align-items:center;gap:8px;width:100%;height:32px;
@@ -259,9 +288,11 @@ a.link-path:hover{color:var(--text)}
   letter-spacing:.085em;color:var(--fog)}
 
 .list{display:flex;flex-direction:column}
-.l-head{position:sticky;top:60px;z-index:20;flex:none;display:grid;
+/* sticky の背景が .lower の区切り線（左端 1px）を塗り潰すため、そこだけ透かす */
+.l-head{position:sticky;top:0;z-index:20;flex:none;display:grid;
   grid-template-columns:1fr 92px 108px 118px 104px 64px;gap:14px;padding:12px 20px;
-  background:var(--bg);border-bottom:1px solid var(--line)}
+  background:linear-gradient(90deg,transparent 0 1px,var(--bg) 1px);
+  border-bottom:1px solid var(--line)}
 .l-body{flex:1}
 .l-row{display:grid;grid-template-columns:1fr 92px 108px 118px 104px 64px;gap:14px;
   padding:0 20px;align-items:center;height:50px;width:100%;text-align:left;
@@ -282,8 +313,20 @@ a.link-path:hover{color:var(--text)}
 .l-head > :not(:first-child),
 .l-row  > :not(:first-child){text-align:center}
 .dot-wrap{justify-content:center}
-.l-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.l-name .cl{color:var(--fog);font-size:12px;margin-left:8px}
+.l-name{display:flex;align-items:center;min-width:0}
+.l-name .txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;
+  border-radius:3px;padding:1px 4px;margin:0 -4px;transition:background .15s}
+.l-name .txt:hover{background:var(--sel-bg)}
+.l-name .cl{color:var(--fog);font-size:12px;margin-left:10px;flex:none;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 重要度：5つの点をドラッグでなぞって決める。同じ値をもう一度押すと解除。 */
+.pri{display:inline-flex;align-items:center;gap:4px;flex:none;margin-left:14px;
+  padding:6px 2px;touch-action:none;cursor:pointer}
+.pri-dot{width:7px;height:7px;border-radius:50%;border:1px solid var(--line);
+  transition:background .12s,border-color .12s,transform .12s}
+.pri:hover .pri-dot{border-color:var(--fog)}
+.pri-dot.on{background:var(--text);border-color:var(--text)}
+.pri:hover .pri-dot.on{transform:scale(1.15)}
 .dot-wrap{display:flex;align-items:center;gap:8px}
 .dot{width:13px;height:13px;border-radius:50%;background:var(--bub-fill);flex:none}
 .pct{font-family:var(--font-mono);font-size:11px;letter-spacing:.085em;color:var(--mist)}
@@ -297,6 +340,13 @@ a.link-path:hover{color:var(--text)}
 button.stage:hover{border-color:var(--accent-hi);color:var(--accent-hi)}
 .l-date,.l-links{font-family:var(--font-mono);font-size:11px;
   letter-spacing:.085em;color:var(--fog)}
+/* 見出しは押せる。押している列だけ色を上げ、矢印で向きを示す。 */
+.col-sort{font-family:inherit;font-size:inherit;letter-spacing:inherit;
+  text-transform:inherit;color:inherit;padding:0;transition:color .15s;
+  white-space:nowrap;text-align:inherit}
+.col-sort:hover{color:var(--mist)}
+.col-sort.on{color:var(--text)}
+.col-sort .ar{margin-left:5px;opacity:.75}
 .l-empty{padding:48px 20px;text-align:center;color:var(--fog);font-size:13px}
 
 /* ---- modal ---- */
@@ -365,10 +415,39 @@ button.stage:hover{border-color:var(--accent-hi);color:var(--accent-hi)}
 .tag-add button{height:32px;padding:0 16px;border-radius:var(--pill);
   border:1px solid var(--line);color:var(--fog);font-size:12.5px;transition:.15s}
 .tag-add button:hover{border-color:var(--text);color:var(--text)}
+/* スライダー：0〜15分。0 は Off。ドラッグ中も即座に数値が動く。 */
+.slider-row{display:flex;align-items:center;gap:16px}
+.slider{position:relative;flex:1;height:30px;display:flex;align-items:center;
+  cursor:pointer;touch-action:none}
+.slider-track{width:100%;height:2px;background:var(--line);border-radius:100vh}
+.slider-fill{height:100%;background:var(--text);border-radius:100vh;width:0}
+.slider-knob{position:absolute;top:50%;width:13px;height:13px;border-radius:50%;
+  background:var(--text);transform:translate(-50%,-50%);transition:transform .12s;
+  pointer-events:none}
+.slider:hover .slider-knob{transform:translate(-50%,-50%) scale(1.25)}
+.slider-val{min-width:74px;text-align:right;color:var(--text)}
 .about{display:flex;flex-direction:column;gap:7px}
 .about-row{display:flex;gap:14px;font-size:13px}
 .about-row .k{width:96px;flex:none;color:var(--fog)}
 .about-row .v{color:var(--mist)}
+
+/* ---- screen saver ----
+   一定時間無操作で気泡だけの全画面へ。物理は fieldBox() を毎フレーム読むので、
+   画面が広がると気泡が自然に散らばっていく。 */
+body.saver .topbar,body.saver .detail,body.saver .lower{
+  opacity:0;pointer-events:none;transition:opacity .9s ease}
+body.saver .upper{position:fixed;inset:0;height:100vh;z-index:200;
+  border:0;grid-template-columns:1fr;transition:none}
+body.saver .bubbles{border:0}
+body.saver .bubbles-head,body.saver .legend{opacity:0;transition:opacity .9s ease}
+body.saver .bub{cursor:default}
+.topbar,.detail,.lower,.bubbles-head,.legend{transition:opacity .5s ease}
+.saver-clock{position:fixed;right:44px;bottom:38px;z-index:210;opacity:0;
+  pointer-events:none;transition:opacity 1.4s ease;text-align:right;
+  font-family:var(--font-mono);letter-spacing:.14em;color:var(--fog)}
+body.saver .saver-clock{opacity:.5}
+.saver-clock .t{font-size:26px;display:block;line-height:1.2}
+.saver-clock .n{font-size:11px;letter-spacing:.18em}
 
 ::-webkit-scrollbar{width:8px;height:8px}
 ::-webkit-scrollbar-thumb{background:var(--line);border-radius:var(--pill)}
@@ -407,17 +486,15 @@ button.stage:hover{border-color:var(--accent-hi);color:var(--accent-hi)}
   <div class="lower">
     <div class="side" id="side"></div>
     <div class="list">
-      <div class="l-head">
-        <div class="meta" data-t="colCase"></div><div class="meta" data-t="detail"></div>
-        <div class="meta" data-t="progress"></div><div class="meta" data-t="colStatus"></div>
-        <div class="meta" data-t="colUpdated"></div><div class="meta" data-t="links"></div>
-      </div>
+      <div class="l-head" id="lhead"></div>
       <div class="l-body" id="rows"></div>
     </div>
   </div>
 </div>
 
 <!-- Add link -->
+<div class="saver-clock" id="saverClock"><span class="t"></span><span class="n"></span></div>
+
 <div class="modal" id="modalLink">
   <div class="sheet">
     <h3 data-t="addLinkTitle"></h3>
@@ -488,6 +565,17 @@ button.stage:hover{border-color:var(--accent-hi);color:var(--accent-hi)}
     </div>
 
     <div class="set-sec">
+      <div class="meta" data-t="screensaver"></div>
+      <div class="slider-row">
+        <div class="slider" id="saverSlider">
+          <div class="slider-track"><div class="slider-fill"></div></div>
+          <div class="slider-knob"></div>
+        </div>
+        <div class="slider-val meta" id="saverVal"></div>
+      </div>
+    </div>
+
+    <div class="set-sec">
       <div class="meta" data-t="tagManagement"></div>
       <div class="set-hint" data-t="tagHint"></div>
       <div id="tagPanel"></div>
@@ -510,14 +598,14 @@ button.stage:hover{border-color:var(--accent-hi);color:var(--accent-hi)}
    =========================================================================== */
 const APP_VERSION = '0.1.0';
 const APP_AUTHOR  = 'Shih-Bo Chiu';
-const APP_ORG     = 'Gesher Inc.';
+const APP_ORG     = '';
 
 const STRINGS = {
   en: {
     searchPh:'Search cases…', newCaseBtn:'＋ New case',
     legendStart:'Started', legendEnd:'Near done',
     colCase:'Case', detail:'Detail', progress:'Progress',
-    colStatus:'Status', colUpdated:'Updated ↓', links:'Links',
+    colStatus:'Status', colUpdated:'Updated', links:'Links',
     newCase:'New case',
     newCaseHintFirst:'Add your first case to get started.',
     newCaseHint:'Once created, this case appears as a bubble on the left.',
@@ -541,6 +629,11 @@ const STRINGS = {
     notes:'Notes', fullLog:'Work log (read only)',
     phMemo:'Anything worth keeping about this case — direction, decisions, things to watch.',
     save:'Save', saved:'Saved', close:'Close', cancel:'Cancel', add:'Add',
+    screensaver:'Screen saver', ssOff:'Off', minUnit:' min',
+    saverCases:' active cases',
+    renameHint:'Click to rename', renameHint2:'Double-click to rename',
+    addType:'＋ Type', addClient:'＋ Client',
+    priorityHint:'Drag across the dots to set priority',
     settings:'Settings', language:'Language',
     theme:'Colour', themeAmeba:'Midnight', themeMono:'Greyscale',
     tagManagement:'Tags', about:'About',
@@ -556,7 +649,7 @@ const STRINGS = {
     searchPh:'案件を検索…', newCaseBtn:'＋ 新規案件',
     legendStart:'着手', legendEnd:'完了直前',
     colCase:'案件名', detail:'詳細', progress:'進捗',
-    colStatus:'ステータス', colUpdated:'最終更新 ↓', links:'リンク',
+    colStatus:'ステータス', colUpdated:'最終更新', links:'リンク',
     newCase:'新規案件',
     newCaseHintFirst:'まずは1件目を登録してください。',
     newCaseHint:'作成すると、この案件が左側に気泡として現れます。',
@@ -580,6 +673,11 @@ const STRINGS = {
     notes:'メモ', fullLog:'作業ログ（表示のみ）',
     phMemo:'この案件について残しておきたいこと——方向性、決定事項、注意点など。',
     save:'保存', saved:'保存しました', close:'閉じる', cancel:'キャンセル', add:'追加',
+    screensaver:'スクリーンセーバー', ssOff:'オフ', minUnit:'分',
+    saverCases:' 件 進行中',
+    renameHint:'クリックで名称を変更', renameHint2:'ダブルクリックで名称を変更',
+    addType:'＋ タイプ', addClient:'＋ クライアント',
+    priorityHint:'ドラッグで重要度を設定',
     settings:'設定', language:'言語',
     theme:'配色', themeAmeba:'ミッドナイト', themeMono:'グレースケール',
     tagManagement:'タグ管理', about:'このアプリについて',
@@ -595,7 +693,7 @@ const STRINGS = {
     searchPh:'搜尋案件…', newCaseBtn:'＋ 新增案件',
     legendStart:'剛開始', legendEnd:'接近完成',
     colCase:'案件名稱', detail:'詳細', progress:'進度',
-    colStatus:'狀態', colUpdated:'最後更新 ↓', links:'連結',
+    colStatus:'狀態', colUpdated:'最後更新', links:'連結',
     newCase:'新增案件',
     newCaseHintFirst:'先建立第一個案件吧。',
     newCaseHint:'建立後，這個案件會以泡泡的形式出現在左邊。',
@@ -619,6 +717,11 @@ const STRINGS = {
     notes:'備註', fullLog:'工作紀錄（唯讀）',
     phMemo:'關於這個案件值得記下來的事——方向、決定、要注意的地方。',
     save:'儲存', saved:'已儲存', close:'關閉', cancel:'取消', add:'新增',
+    screensaver:'螢幕保護', ssOff:'關閉', minUnit:' 分鐘',
+    saverCases:' 件進行中',
+    renameHint:'點一下改名稱', renameHint2:'點兩下改名稱',
+    addType:'＋ 類型', addClient:'＋ 客戶',
+    priorityHint:'拖曳圓點設定重要性',
     settings:'設定', language:'語言',
     theme:'配色', themeAmeba:'午夜藍', themeMono:'灰階',
     tagManagement:'標籤管理', about:'關於',
@@ -654,23 +757,15 @@ const KEY = 'work-tracker-v1';
 
 function sampleCases(){
   const base = Date.now();
-  const rows = [
-    ['Spring campaign banner','Banner','Acme',      6, 'Waiting on the final copy. Layout is settled.',
-      ['Second round of edits sent.','First draft shared, direction approved.']],
-    ['Product launch LP','LP','Northwind',          3, '', ['Wireframe review done.']],
-    ['Company profile deck','Deck','Internal',      8, 'Only the last two pages left.',
-      ['Charts replaced with the new figures.']],
-    ['Business card refresh','Print','Internal',    1, '', []],
-    ['Recruitment video','Video','Acme',            5, '', ['Storyboard drafted.']],
-  ];
-  return rows.map(([name,type,client,step,memo,logs],i)=>({
-    id:'sample-'+i, name, type, client, step, memo,
+  /* 初回起動時の5件。すべて着手前（step 0）＝最小サイズ・最も淡い状態から始まる。
+     進捗を進めると気泡が育つ、という基本動作をユーザー自身の手で確認できる。 */
+  return ['A','B','C','D','E'].map((k,i) => ({
+    id:'sample-'+k, name:'Project '+k,
+    type:'', client:'', step:0, memo:'',
     done:false, waiting:false,
-    created:new Date(base-(20-i*3)*86400000).toISOString(),
-    updated:new Date(base-i*5*3600000).toISOString(),
-    logs:logs.map((text,j)=>({ id:'sample-'+i+'-'+j, text,
-      ts:new Date(base-(i*5+j*9)*3600000).toISOString() })),
-    links:i===0 ? [{ id:'sample-link', type:'Drive', url:'https://drive.google.com/' }] : []
+    created:new Date(base - i*60000).toISOString(),
+    updated:new Date(base - i*60000).toISOString(),
+    logs:[], links:[]
   }));
 }
 
@@ -679,6 +774,7 @@ let selectedId = null;
 let mode = 'case';
 let lastTouched = null;
 let filter = { status:'all', client:null, type:null, q:'' };
+let sortBy = { key:'updated', dir:-1 };
 
 function load(){
   try{
@@ -687,7 +783,41 @@ function load(){
   }catch(e){}
   return { cases: sampleCases(), fresh:true };
 }
-function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+const DATA_FILE = 'work-tracker.json';
+
+/* localStorage は即時・同期のまま保険として残し、実体は JSON ファイルへ書く。
+   Tauri が無い環境では従来どおり localStorage のみで動く。 */
+function save(){
+  const json = JSON.stringify(state, null, 2);
+  try{ localStorage.setItem(KEY, json); }catch(e){}
+  writeFile(json);
+}
+
+let _wt = null;
+function writeFile(json){
+  const t = TA(); if(!t?.fs) return;
+  clearTimeout(_wt);
+  _wt = setTimeout(async () => {
+    try{
+      await t.fs.writeTextFile(DATA_FILE, json, { baseDir: t.fs.BaseDirectory.AppData });
+    }catch(e){ console.warn('[work-log] file write failed:', e); }
+  }, 400);
+}
+
+/* 起動時：ファイルがあればそれを正とする（localStorage より確実な実体） */
+async function loadFromFile(){
+  const t = TA(); if(!t?.fs) return;
+  try{
+    const txt = await t.fs.readTextFile(DATA_FILE, { baseDir: t.fs.BaseDirectory.AppData });
+    const parsed = JSON.parse(txt);
+    if(parsed && Array.isArray(parsed.cases)){
+      state = parsed;
+      if(state.sortBy && state.sortBy.key) sortBy = state.sortBy;
+applyTheme(state.theme || 'ameba');
+      applyLang(state.lang || 'en');
+    }
+  }catch(e){ /* 初回起動でファイルが無いのは正常 */ }
+}
 
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 const now = () => new Date().toISOString();
@@ -708,7 +838,10 @@ const fmtFull  = iso => { const d=new Date(iso);
   return d.getFullYear()+'.'+pad(d.getMonth()+1)+'.'+pad(d.getDate()); };
 
 const progOf  = c => c.step / 10;
-const sizeOf  = p => 30 + 130 * (0.35 + 0.65 * Math.sin(p * Math.PI));
+/* 気泡サイズ。console から SIZE を書き換えて renderAll() すれば即座に反映される。
+   floor を下げるほど「着手直後」と「山場」の差が開く。 */
+let SIZE = { base:16, span:144, floor:0.18 };
+const sizeOf  = p => SIZE.base + SIZE.span * (SIZE.floor + (1-SIZE.floor) * Math.sin(p * Math.PI));
 const opOf    = p => 0.18 + 0.82 * p;
 const bubSize = c => Math.round(sizeOf(progOf(c)));
 
@@ -740,7 +873,12 @@ function bubbleCases(){
 function listCases(){
   return state.cases.filter(c => matchQ(c) && matchSide(c)
     && (filter.status==='all' ? !c.done : statusOf(c)===filter.status))
-    .sort((a,b) => b.updated.localeCompare(a.updated));
+    .sort((a,b) => {
+      const va = sortVal(a, sortBy.key), vb = sortVal(b, sortBy.key);
+      if(va < vb) return -sortBy.dir;
+      if(va > vb) return  sortBy.dir;
+      return b.updated.localeCompare(a.updated);   // 同値なら更新順で安定させる
+    });
 }
 
 function current(){
@@ -753,53 +891,99 @@ function current(){
   return pool.slice().sort((a,b) => b.updated.localeCompare(a.updated))[0] || null;
 }
 
-/* ---- bubble placement ---- */
-let bubblePos = {};
-let bubbleSig = '';
+/* ---- bubble physics ----
+   一発計算ではなく毎フレーム解く。風船同士が実際に押し合い、掴んで動かせる。 */
 const bubEls = new Map();
+const bodies = new Map();          // id -> {x,y,vx,vy,r}
+const PADB = { top:66, bottom:46, side:16 };
+let physRunning = false;
 
-function solve(sizes, W, H){
-  const n = sizes.length;
-  if(!n) return [];
-  const PAD = { top:66, bottom:46, side:16 };
-  const cx = W/2, cy = (PAD.top + (H-PAD.bottom))/2;
-  const order = sizes.map((s,i)=>[s,i]).sort((a,b)=>b[0]-a[0]).map(x=>x[1]);
-  const pos = new Array(n);
-  order.forEach((idx,k)=>{
-    const a = k * 2.399963, r = 26 * Math.sqrt(k);
-    pos[idx] = { x: cx + r*Math.cos(a), y: cy + r*Math.sin(a) };
-  });
-  for(let it=0; it<520; it++){
-    for(let i=0;i<n;i++) for(let j=i+1;j<n;j++){
-      const dx=pos[j].x-pos[i].x, dy=pos[j].y-pos[i].y;
-      const d=Math.hypot(dx,dy)||.01, min=(sizes[i]+sizes[j])/2 + 10;
-      if(d<min){
-        const push=(min-d)/d*0.5, ox=dx*push, oy=dy*push;
-        pos[i].x-=ox; pos[i].y-=oy; pos[j].x+=ox; pos[j].y+=oy;
-      }
-    }
-    for(let i=0;i<n;i++){
-      pos[i].x += (cx-pos[i].x)*0.008;
-      pos[i].y += (cy-pos[i].y)*0.008;
-      const r=sizes[i]/2;
-      pos[i].x=Math.max(PAD.side+r, Math.min(W-PAD.side-r, pos[i].x));
-      pos[i].y=Math.max(PAD.top+r,  Math.min(H-PAD.bottom-r, pos[i].y));
-    }
-  }
-  return pos.map((p,i)=>[Math.round(p.x-sizes[i]/2), Math.round(p.y-sizes[i]/2)]);
+function fieldBox(){
+  const b = $('bubbles');
+  return { W:b.clientWidth || 900, H:b.clientHeight || 600 };
 }
 
-function ensureLayout(){
-  const box = $('bubbles');
-  const all = state.cases.filter(c => !c.done);
-  const sig = all.map(c => c.id+':'+bubSize(c)).join('|')
-            + '@' + box.clientWidth + 'x' + box.clientHeight;
-  if(sig === bubbleSig) return all;
-  bubbleSig = sig;
-  const pos = solve(all.map(bubSize), box.clientWidth, box.clientHeight);
-  bubblePos = {};
-  all.forEach((c,i) => { bubblePos[c.id] = pos[i]; });
-  return all;
+/* 新しい気泡は外周から入ってくる（いきなり中央に湧かない） */
+function syncBody(id, size){
+  const r = size/2;
+  const b = bodies.get(id);
+  if(b){ b.r = r; return b; }
+  const { W, H } = fieldBox();
+  const cx = W/2, cy = (PADB.top + (H-PADB.bottom))/2;
+  const a = Math.random() * Math.PI * 2;
+  const nb = { x: cx + Math.cos(a)*(W*0.42), y: cy + Math.sin(a)*(H*0.34),
+               vx:0, vy:0, r, drag:false };
+  bodies.set(id, nb);
+  return nb;
+}
+
+function tick(){
+  const { W, H } = fieldBox();
+  const cx = W/2, cy = (PADB.top + (H-PADB.bottom))/2;
+  const list = [...bodies.entries()];
+
+  for(let i=0;i<list.length;i++){
+    for(let j=i+1;j<list.length;j++){
+      const a = list[i][1], b = list[j][1];
+      const dx = b.x-a.x, dy = b.y-a.y;
+      const d  = Math.hypot(dx,dy) || .01;
+      const min = a.r + b.r + 6;
+      if(d < min){
+        const push = (min-d)/d * 0.22;
+        const ox = dx*push, oy = dy*push;
+        if(!a.drag){ a.x -= ox; a.y -= oy; a.vx -= ox*0.35; a.vy -= oy*0.35; }
+        if(!b.drag){ b.x += ox; b.y += oy; b.vx += ox*0.35; b.vy += oy*0.35; }
+      }
+    }
+  }
+
+  for(const [id, b] of list){
+    if(!b.drag){
+      b.vx += (cx-b.x)*0.0007 + (Math.random()-0.5)*0.055;   // 中心へ + 微かな揺らぎ
+      b.vy += (cy-b.y)*0.0007 + (Math.random()-0.5)*0.055;
+      const damp = saverOn ? 0.972 : 0.935;                  // セーバー中はもっと漂う
+      b.vx *= damp; b.vy *= damp;
+      b.x += b.vx;   b.y += b.vy;
+      if(b.x-b.r < PADB.side)     { b.x = PADB.side + b.r;     b.vx *= -0.42; }
+      if(b.x+b.r > W-PADB.side)   { b.x = W - PADB.side - b.r;  b.vx *= -0.42; }
+      if(b.y-b.r < PADB.top)      { b.y = PADB.top + b.r;       b.vy *= -0.42; }
+      if(b.y+b.r > H-PADB.bottom) { b.y = H - PADB.bottom - b.r; b.vy *= -0.42; }
+    }
+    const el = bubEls.get(id);
+    if(el && !el.classList.contains('leaving')){
+      el.style.left = (b.x - b.r) + 'px';
+      el.style.top  = (b.y - b.r) + 'px';
+    }
+  }
+  requestAnimationFrame(tick);
+}
+function startPhysics(){ if(physRunning) return; physRunning = true; requestAnimationFrame(tick); }
+
+/* ドラッグ：5px 以上動いたら選択ではなく移動とみなす */
+function attachDrag(el, id){
+  let sx=0, sy=0, moved=false, body=null;
+  el.addEventListener('pointerdown', e => {
+    body = bodies.get(id); if(!body) return;
+    body.drag = true; moved = false;
+    sx = e.clientX - body.x; sy = e.clientY - body.y;
+    el.setPointerCapture(e.pointerId);
+    el.classList.add('dragging');
+  });
+  el.addEventListener('pointermove', e => {
+    if(!body || !body.drag) return;
+    const nx = e.clientX - sx, ny = e.clientY - sy;
+    if(Math.abs(nx-body.x) + Math.abs(ny-body.y) > 5) moved = true;
+    body.vx = nx - body.x; body.vy = ny - body.y;   // 離した時に慣性が残る
+    body.x = nx; body.y = ny;
+  });
+  const end = () => {
+    if(!body) return;
+    body.drag = false; el.classList.remove('dragging');
+    setTimeout(()=>{ moved = false; }, 0);
+  };
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
+  el.addEventListener('click', e => { if(moved){ e.stopImmediatePropagation(); } }, true);
 }
 
 /* ---- rendering ---- */
@@ -816,8 +1000,9 @@ function renderChips(){
 
 function renderBubbles(){
   const box = $('bubbles');
-  const all = ensureLayout();
+  const all = state.cases.filter(c => !c.done);
   const alive = new Set(all.map(c=>c.id));
+  for(const id of [...bodies.keys()]) if(!alive.has(id)) bodies.delete(id);
 
   for(const [id, el] of [...bubEls]){
     if(!alive.has(id)){ el.remove(); bubEls.delete(id); }
@@ -851,17 +1036,15 @@ function renderBubbles(){
       el.onclick = () => { selectedId = c.id; mode = 'case'; renderAll(); };
       box.appendChild(el);
       bubEls.set(c.id, el);
-      el.animate(
-        [{translate:'0 0'},{translate:`${(i%3-1)*8}px ${(i%2?-1:1)*10}px`},{translate:'0 0'}],
-        { duration:5200+i*380, iterations:Infinity, easing:'ease-in-out' }
-      );
+      attachDrag(el, c.id);
     }
-    const s = bubSize(c), [x,y] = bubblePos[c.id];
-    el.style.left = x+'px';
-    el.style.top  = y+'px';
+    const s = bubSize(c);
+    syncBody(c.id, s);
     el.style.width = el.style.height = s+'px';
     el.style.setProperty('--op', opOf(progOf(c)));
-    el.textContent = s > 78 ? c.name : '';
+    /* 字級は円の大きさに追従（52px→8.5px、160px→13px あたり） */
+    el.style.fontSize = (9 + Math.max(0, s-42) * 0.034).toFixed(1) + 'px';
+    el.innerHTML = `<span>${esc(c.name)}</span>`;
     el.title = `${c.name} · ${Math.round(progOf(c)*100)}%`;
     el.classList.toggle('dim', !visible.has(c.id));
     el.classList.toggle('match', filtering && visible.has(c.id));
@@ -923,8 +1106,10 @@ function renderDetail(){
   $('detail').innerHTML = `
     <div class="d-head">
       <div class="d-title">
-        <div class="case-name">${esc(c.name)}</div>
-        <div class="meta case-sub">${esc(c.type||'—')} ／ ${esc(c.client||'—')} ／ ${fmtFull(c.created)} ／ ${fmtStamp(c.updated)}</div>
+        <div class="case-name" id="caseName" title="${T.renameHint}">${esc(c.name)}</div>
+        <div class="meta case-sub"><span class="sub-edit${c.type?'':' empty'}" data-field="type"
+          >${c.type ? esc(c.type) : T.addType}</span> ／ <span class="sub-edit${c.client?'':' empty'}" data-field="client"
+          >${c.client ? esc(c.client) : T.addClient}</span> ／ ${fmtFull(c.created)} ／ ${fmtStamp(c.updated)}</div>
       </div>
       <button class="icon-btn" id="toNew" title="${T.toNewForm}">×</button>
     </div>
@@ -1000,6 +1185,36 @@ function renderSide(){
     ${group(T.clientGroup,'client', tally('client'), filter.client)}`;
 }
 
+/* 並び替え。dir: -1 = 降順、1 = 昇順。名前だけ既定を昇順にする（あいうえお順が自然なので） */
+const STATUS_ORDER = { active:0, near:1, idle:2, done:3 };
+const SORT_COLS = [
+  { key:'name',    t:'colCase'    },
+  { key:null,      t:'detail'     },   // 操作ボタンの列なので並び替え対象外
+  { key:'step',    t:'progress'   },
+  { key:'status',  t:'colStatus'  },
+  { key:'updated', t:'colUpdated' },
+  { key:'links',   t:'links'      },
+];
+
+function sortVal(c, key){
+  switch(key){
+    case 'name':    return (c.name||'').toLowerCase();
+    case 'step':    return c.step;
+    case 'status':  return STATUS_ORDER[statusOf(c)];
+    case 'links':   return (c.links||[]).length;
+    default:        return c.updated;
+  }
+}
+
+function renderHead(){
+  $('lhead').innerHTML = SORT_COLS.map(col => {
+    if(!col.key) return `<div class="meta">${T[col.t]}</div>`;
+    const on = sortBy.key === col.key;
+    const ar = on ? `<span class="ar">${sortBy.dir < 0 ? '↓' : '↑'}</span>` : '';
+    return `<button class="meta col-sort${on?' on':''}" data-sort="${col.key}">${T[col.t]}${ar}</button>`;
+  }).join('');
+}
+
 function renderList(){
   const list = listCases();
   const cur = current();
@@ -1014,7 +1229,11 @@ function renderList(){
       ? `<span class="stage fin">${STATUS_LABEL.done}</span>`
       : `<button class="stage ${st}" data-toggle="${c.id}" title="${T.toggleStatus}">${STATUS_LABEL[st]}</button>`;
     return `<div class="l-row${cur&&cur.id===c.id?' sel':''}${flash}" data-id="${c.id}" role="button" tabindex="0">
-      <div class="l-name">${esc(c.name)}<span class="cl">${[c.type,c.client].filter(Boolean).map(esc).join(' · ')}</span></div>
+      <div class="l-name"><span class="txt" data-rename="${c.id}" title="${T.renameHint2}">${esc(c.name)}</span
+        ><span class="cl">${[c.type,c.client].filter(Boolean).map(esc).join(' · ')}</span
+        ><span class="pri" data-pri="${c.id}" title="${T.priorityHint}">${
+          [1,2,3,4,5].map(n => `<span class="pri-dot${n <= (c.priority||0) ? ' on' : ''}"></span>`).join('')
+        }</span></div>
       <div><button class="detail-pill" data-detail="${c.id}">${T.detail}</button></div>
       <div class="dot-wrap"><div class="dot" style="opacity:${opOf(p)}"></div>
         <span class="pct">${Math.round(p*100)}%</span></div>
@@ -1027,7 +1246,7 @@ function renderList(){
 }
 
 function renderAll(){
-  renderChips(); renderBubbles(); renderDetail(); renderSide(); renderList();
+  renderChips(); renderBubbles(); renderDetail(); renderSide(); renderHead(); renderList();
   if($('modalSettings').classList.contains('on')) renderSettings();
 }
 
@@ -1037,6 +1256,8 @@ function renderSettings(){
     s.classList.toggle('on', s.dataset.lang === lang));
   document.querySelectorAll('#themeSeg .seg').forEach(s =>
     s.classList.toggle('on', s.dataset.theme === theme));
+  initSaverSlider();
+  paintSaver(Math.round(saverDelay / 60000));
 
   const group = (key, label) => {
     const tags = poolOf(key);
@@ -1057,7 +1278,7 @@ function renderSettings(){
 
   $('aboutPanel').innerHTML = `
     <div class="about-row"><span class="k">${T.version}</span><span class="v">${APP_VERSION}</span></div>
-    <div class="about-row"><span class="k">${T.author}</span><span class="v">${esc(APP_AUTHOR)} · ${esc(APP_ORG)}</span></div>
+    <div class="about-row"><span class="k">${T.author}</span><span class="v">${esc(APP_AUTHOR)}${APP_ORG ? ' · ' + esc(APP_ORG) : ''}</span></div>
     <div class="about-row"><span class="k">${T.storage}</span><span class="v">${T.storageLocal}</span></div>`;
 }
 
@@ -1086,6 +1307,18 @@ function applyLang(l){
 }
 
 /* ---- actions ---- */
+/* Tauri の confirm / fs は async。ブラウザでも動くようラップする */
+const TA = () => window.__TAURI__ || null;
+
+async function ask(msg){
+  const t = TA();
+  if(t?.dialog?.confirm){
+    try{ return await t.dialog.confirm(msg, { title:'Work Log', kind:'warning' }); }
+    catch(e){ return window.confirm(msg); }
+  }
+  return window.confirm(msg);
+}
+
 function setStep(c, n){
   const next = (c.step === n) ? n-1 : n;
   if(next >= 10){ finish(c); return; }
@@ -1094,8 +1327,8 @@ function setStep(c, n){
   touch(c); save(); renderAll();
 }
 
-function finish(c){
-  if(!confirm(T.confirmFinish(c.name))) return;
+async function finish(c){
+  if(!await ask(T.confirmFinish(c.name))) return;
   c.step = 10; touch(c);
   const el = bubEls.get(c.id);
   if(el){
@@ -1107,10 +1340,84 @@ function finish(c){
   }
 }
 
+/* その場で名前を書き換える。編集中は renderAll を呼ばない（DOM ごと消えるため） */
+function editName(c, host){
+  if(host.querySelector('.name-edit')) return;
+  const keep = host.innerHTML;
+  const input = document.createElement('input');
+  input.className = 'name-edit';
+  input.value = c.name;
+  host.innerHTML = '';
+  host.appendChild(input);
+  input.focus(); input.select();
+  let closed = false;
+  const commit = ok => {
+    if(closed) return; closed = true;
+    const v = input.value.trim();
+    if(ok && v && v !== c.name){ c.name = v; touch(c); save(); renderAll(); }
+    else { host.innerHTML = keep; }
+  };
+  input.addEventListener('blur', () => commit(true));
+  input.addEventListener('keydown', e => {
+    e.stopPropagation();
+    if(e.key === 'Enter'){ e.preventDefault(); commit(true); }
+    if(e.key === 'Escape'){ e.preventDefault(); commit(false); }
+  });
+}
+
+/* タイプ／クライアントの編集。既存の値から候補を出す（新語もそのまま登録される） */
+function editField(c, key, host){
+  if(host.querySelector('input')) return;
+  const keep = host.innerHTML, keepCls = host.className;
+  const wrap = document.createElement('span'); wrap.className = 'inline-ac';
+  const input = document.createElement('input'); input.className = 'field-edit';
+  const list = document.createElement('div'); list.className = 'ac-list';
+  input.value = c[key] || '';
+  wrap.append(input, list);
+  host.className = keepCls.replace('empty','').trim();
+  host.innerHTML = ''; host.appendChild(wrap);
+  input.focus(); input.select();
+
+  let items = [], active = -1, closed = false;
+  const paint = () => {
+    const q = input.value.trim().toLowerCase();
+    items = poolOf(key).filter(v => v.toLowerCase().includes(q) && v.toLowerCase() !== q);
+    if(!items.length){ list.classList.remove('on'); return; }
+    list.innerHTML = items.map((v,i) =>
+      `<button type="button" class="ac-item${i===active?' on':''}" data-i="${i}">${esc(v)}</button>`).join('');
+    list.classList.add('on');
+  };
+  const commit = ok => {
+    if(closed) return; closed = true;
+    const v = input.value.trim();
+    if(ok && v !== (c[key] || '')){
+      c[key] = v; rememberTag(key, v); touch(c); save(); renderAll();
+    }else{ host.className = keepCls; host.innerHTML = keep; }
+  };
+  input.addEventListener('input', () => { active = -1; paint(); });
+  input.addEventListener('blur', () => setTimeout(() => commit(true), 150));
+  input.addEventListener('keydown', e => {
+    e.stopPropagation();
+    if(list.classList.contains('on')){
+      if(e.key === 'ArrowDown'){ e.preventDefault(); active = Math.min(active+1, items.length-1); paint(); return; }
+      if(e.key === 'ArrowUp'){ e.preventDefault(); active = Math.max(active-1, -1); paint(); return; }
+      if(e.key === 'Enter' && active >= 0){ e.preventDefault(); input.value = items[active]; list.classList.remove('on'); return; }
+    }
+    if(e.key === 'Enter'){ e.preventDefault(); commit(true); }
+    if(e.key === 'Escape'){ e.preventDefault(); commit(false); }
+  });
+  list.addEventListener('mousedown', e => {
+    const b = e.target.closest('.ac-item'); if(!b) return;
+    e.preventDefault(); input.value = items[+b.dataset.i];
+    list.classList.remove('on'); input.focus();
+  });
+  paint();
+}
+
 function addLog(c, text){
   if(!text.trim()) return;
   c.logs = c.logs || [];
-  c.logs.push({ id:uid(), ts:now(), text:text.trim() });
+  c.logs.push({ id:uid(), ts:now(), text:text.trim(), source:'manual' });
   touch(c); save(); renderAll();
   setTimeout(()=>{ const i = $('logInput'); if(i) i.focus(); }, 0);
 }
@@ -1167,7 +1474,7 @@ function attachAutocomplete(inputId, listId, getPool){
 }
 
 /* ---- events ---- */
-document.addEventListener('click', e => {
+document.addEventListener('click', async e => {
   const t = e.target;
 
   if(t.closest('#settingsBtn')){ renderSettings(); $('modalSettings').classList.add('on'); return; }
@@ -1178,11 +1485,12 @@ document.addEventListener('click', e => {
   const themeSeg = t.closest('#themeSeg .seg');
   if(themeSeg){ applyTheme(themeSeg.dataset.theme); return; }
 
+
   const tagDel = t.closest('[data-tagdel]');
   if(tagDel){
     const key = tagDel.dataset.tagdel, value = tagDel.dataset.tagval;
     const n = usageOf(key, value);
-    if(n && !confirm(T.confirmTagDelete(value, n))) return;
+    if(n && !await ask(T.confirmTagDelete(value, n))) return;
     state.tags = state.tags || { type:[], client:[] };
     state.tags[key] = (state.tags[key]||[]).filter(v => v !== value);
     state.cases.forEach(c => { if(c[key] === value) c[key] = ''; });
@@ -1197,6 +1505,15 @@ document.addEventListener('click', e => {
     if(!v){ input.focus(); return; }
     rememberTag(key, v); input.value = '';
     save(); renderSettings(); return;
+  }
+
+  const sortBtn = t.closest('[data-sort]');
+  if(sortBtn){
+    const k = sortBtn.dataset.sort;
+    if(sortBy.key === k) sortBy.dir *= -1;
+    else sortBy = { key:k, dir: k === 'name' ? 1 : -1 };
+    state.sortBy = sortBy; save();
+    renderHead(); renderList(); return;
   }
 
   const detailBtn = t.closest('[data-detail]');
@@ -1226,6 +1543,12 @@ document.addEventListener('click', e => {
   const row = t.closest('.l-row');
   if(row){ selectedId = row.dataset.id; mode = 'case'; renderAll(); return; }
 
+  const fieldHost = t.closest('[data-field]');
+  if(fieldHost){ const c = current(); if(c) editField(c, fieldHost.dataset.field, fieldHost); return; }
+
+  const nameHost = t.closest('#caseName');
+  if(nameHost){ const c = current(); if(c) editName(c, nameHost); return; }
+
   if(t.closest('#toNew')){ mode = 'new'; renderDetail(); return; }
   if(t.closest('#backToCase')){ mode = 'case'; renderDetail(); return; }
   if(t.closest('#nCreate')){ createCase(); return; }
@@ -1248,7 +1571,7 @@ document.addEventListener('click', e => {
   if(t.closest('#addLink')){ openModal('modalLink'); return; }
   if(t.closest('#delCase')){
     const c = current(); if(!c) return;
-    if(confirm(T.confirmDelete(c.name))){
+    if(await ask(T.confirmDelete(c.name))){
       state.cases = state.cases.filter(x=>x.id!==c.id);
       selectedId = null;
       if(!state.cases.length) mode = 'new';
@@ -1289,6 +1612,51 @@ document.addEventListener('keydown', e => {
   if((e.key === 'Enter' || e.key === ' ') && e.target.classList?.contains('l-row')){
     e.preventDefault(); e.target.click();
   }
+});
+
+/* 重要度のドラッグ選択。行のクリック（案件選択）に伝播させない。 */
+let priDrag = null;
+const priVal = (el, e) => {
+  const r = el.getBoundingClientRect();
+  return Math.max(0, Math.min(5, Math.ceil((e.clientX - r.left) / (r.width / 5))));
+};
+const priPaint = (el, v) =>
+  [...el.querySelectorAll('.pri-dot')].forEach((d,i) => d.classList.toggle('on', i < v));
+
+document.addEventListener('pointerdown', e => {
+  const el = e.target.closest('.pri');
+  if(!el) return;
+  e.stopPropagation(); e.preventDefault();
+  const c = state.cases.find(x => x.id === el.dataset.pri);
+  if(!c) return;
+  priDrag = { el, c };
+  el.setPointerCapture(e.pointerId);
+  priPaint(el, priVal(el, e));
+}, true);
+
+document.addEventListener('pointermove', e => {
+  if(!priDrag) return;
+  priPaint(priDrag.el, priVal(priDrag.el, e));
+});
+
+document.addEventListener('pointerup', e => {
+  if(!priDrag) return;
+  const { el, c } = priDrag; priDrag = null;
+  let v = priVal(el, e);
+  if(v === (c.priority || 0)) v = 0;      // 同じ値をなぞったら解除
+  c.priority = v; touch(c); save(); renderAll();
+});
+
+document.addEventListener('click', e => {
+  if(e.target.closest('.pri')) e.stopPropagation();
+}, true);
+
+document.addEventListener('dblclick', e => {
+  const host = e.target.closest('[data-rename]');
+  if(!host) return;
+  e.preventDefault(); e.stopPropagation();
+  const c = state.cases.find(x => x.id === host.dataset.rename);
+  if(c) editName(c, host);
 });
 
 $('search').addEventListener('input', e => { filter.q = e.target.value; renderAll(); });
@@ -1352,12 +1720,78 @@ if(!state.tags){
   delete state.fresh; save();
 }else if(state.fresh){ delete state.fresh; save(); }
 
-let rt;
-new ResizeObserver(()=>{ clearTimeout(rt); rt = setTimeout(renderBubbles, 140); })
-  .observe($('bubbles'));
+/* ---- screen saver ---- */
+let saverOn = false, idleTimer = null;
+let saverDelay = 5 * 60 * 1000;   // 設定で 0 / 5分 / 15分
+
+function paintClock(){
+  if(!saverOn) return;
+  const d = new Date();
+  const alive = state.cases.filter(c => !c.done).length;
+  $('saverClock').querySelector('.t').textContent = pad(d.getHours()) + ':' + pad(d.getMinutes());
+  $('saverClock').querySelector('.n').textContent = alive + (T.saverCases || '');
+  setTimeout(paintClock, 20000);
+}
+function enterSaver(){
+  if(saverOn || !saverDelay || document.querySelector('.modal.on')) return;
+  saverOn = true; document.body.classList.add('saver'); paintClock();
+}
+function exitSaver(){
+  if(!saverOn) return;
+  saverOn = false; document.body.classList.remove('saver');
+}
+function resetIdle(){
+  exitSaver();
+  clearTimeout(idleTimer);
+  if(saverDelay) idleTimer = setTimeout(enterSaver, saverDelay);
+}
+['pointermove','pointerdown','keydown','wheel','focus'].forEach(ev =>
+  window.addEventListener(ev, resetIdle, { passive:true }));
+
+const SAVER_MAX = 15;   // 分
+
+function paintSaver(min){
+  const pct = (min / SAVER_MAX) * 100;
+  const el = $('saverSlider'); if(!el) return;
+  el.querySelector('.slider-fill').style.width = pct + '%';
+  el.querySelector('.slider-knob').style.left = pct + '%';
+  $('saverVal').textContent = min === 0 ? T.ssOff : min + T.minUnit;
+}
+
+function applySaver(ms){
+  saverDelay = ms; state.saverDelay = ms; save();
+  paintSaver(Math.round(ms / 60000));
+  resetIdle();
+}
+
+function initSaverSlider(){
+  const el = $('saverSlider'); if(!el || el.dataset.ready) return;
+  el.dataset.ready = '1';
+  const valAt = e => {
+    const r = el.getBoundingClientRect();
+    return Math.max(0, Math.min(SAVER_MAX,
+      Math.round((e.clientX - r.left) / r.width * SAVER_MAX)));
+  };
+  let dragging = false;
+  el.addEventListener('pointerdown', e => {
+    dragging = true; el.setPointerCapture(e.pointerId);
+    paintSaver(valAt(e));
+  });
+  el.addEventListener('pointermove', e => { if(dragging) paintSaver(valAt(e)); });
+  const end = e => {
+    if(!dragging) return; dragging = false;
+    applySaver(valAt(e) * 60000);
+  };
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
+}
+
+startPhysics();   // 物理は常時回す。境界は毎フレーム読むのでリサイズ追従は不要
+applySaver(state.saverDelay === undefined ? saverDelay : state.saverDelay);
 
 applyTheme(state.theme || 'ameba');
 applyLang(state.lang || 'en');
+loadFromFile();
 </script>
 </body>
 </html>
