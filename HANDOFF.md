@@ -71,6 +71,27 @@ async function ask(msg){
 
 click ハンドラも `async e => {...}` に変更済み。
 
+### 3-b. 【v0.1.4】JSON ファイルが一度も書けていなかった
+
+会社側マシンのレビューで発覚。`~/Library/Application Support/com.shihbo.worklog/`
+が存在せず、書き込みが毎回 ENOENT で落ちていた。
+
+**原因**：`writeTextFile` は親ディレクトリを作らない。AppData のディレクトリは
+初回起動時点では存在しないため、必ず先に `mkdir` が要る。
+
+**より悪かった点**：失敗を `console.warn` だけで握りつぶしていた。
+release ビルドには devtools が無いので、**数十回の失敗が完全に無音**だった。
+localStorage が動いていたため、表面上は何の問題も無いように見えていた。
+
+**修正**：
+- 書き込み前に `mkdir('', { baseDir: AppData, recursive: true })`。
+  空文字を受けつけない版のために `appDataDir()` からの絶対パスで再試行するフォールバックも用意
+- **設定画面の「保存先」に実際の状態を出す**。書けていれば実パス、
+  失敗していれば赤字でエラー内容。沈黙する失敗を二度と作らないため
+
+**教訓**：ユーザーに見えないところで失敗するくらいなら、крash した方がまだいい。
+握りつぶすなら必ず UI に出口を用意する。
+
 ### 3. 保存が localStorage のみだった
 
 仕様は「ローカル JSON ファイル」。localStorage は WebView の内部領域なので、
