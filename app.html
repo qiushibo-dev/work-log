@@ -24,7 +24,7 @@
   /* 意味的トークン（テーマごとに差し替わるのはここ） */
   --bg:var(--midnight-ink);      /* ページ地 */
   --text:var(--paper);           /* 主要テキスト */
-  --line:var(--line);      /* 枠線 */
+  --line:var(--slate-body);      /* 枠線 */
   --accent:var(--signal-blue);   /* 塗りアクション */
   --on-accent:#ffffff;           /* 塗りの上に乗る文字 */
   --accent-hi:var(--arc-cyan);   /* ホバー時の強調色 */
@@ -278,6 +278,10 @@ a.link-path:hover{color:var(--text)}
   font-family:var(--font-mono);font-size:10px;letter-spacing:.085em;
   color:var(--fog);text-transform:uppercase;transition:.15s}
 .detail-pill:hover{border-color:var(--accent-hi);color:var(--accent-hi)}
+/* 案件名以外は見出しと値をまとめて中央揃えにする */
+.l-head > :not(:first-child),
+.l-row  > :not(:first-child){text-align:center}
+.dot-wrap{justify-content:center}
 .l-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .l-name .cl{color:var(--fog);font-size:12px;margin-left:8px}
 .dot-wrap{display:flex;align-items:center;gap:8px}
