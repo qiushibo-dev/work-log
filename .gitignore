@@ -1,0 +1,7 @@
+.DS_Store
+*.log
+node_modules/
+
+# Tauri build output (when the desktop build lands)
+src-tauri/target/
+dist/

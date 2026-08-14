@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>工作記錄 App — Wireframe v2</title>
+<style>
+  :root{
+    --ink:#1a1a1a; --line:#c9c9c9; --line-soft:#e4e4e4;
+    --fill:#6e6e6e; --fill-soft:#d8d8d8; --paper:#fff; --ground:#f7f7f7;
+    --note:#0066cc;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--ground);color:var(--ink);
+    font-family:"Hiragino Sans","Noto Sans JP","PingFang TC",system-ui,sans-serif;
+    font-size:14px;line-height:1.6;padding:32px}
+
+  .frame{width:1600px;margin:0 auto;background:var(--paper);
+    border:1px solid var(--line);position:relative}
+
+  .anno{position:absolute;background:var(--note);color:#fff;width:22px;height:22px;
+    border-radius:50%;font-size:12px;font-weight:700;display:grid;place-items:center;
+    z-index:50;font-family:system-ui}
+
+  /* ---- 頂列 ---- */
+  .topbar{height:64px;border-bottom:1px solid var(--line);display:flex;
+    align-items:center;gap:16px;padding:0 24px;position:relative}
+  .logo{width:120px;height:20px;background:var(--fill-soft);border-radius:3px}
+  .search{flex:1;max-width:320px;height:32px;border:1px solid var(--line);border-radius:100vh}
+  .spacer{flex:1}
+  .btn{height:36px;padding:0 20px;border:1.5px solid var(--ink);border-radius:100vh;
+    display:grid;place-items:center;font-weight:600;font-size:13px;cursor:pointer}
+  .btn.ghost{border-color:var(--line);font-weight:400;color:#777}
+
+  /* ---- 上半 ---- */
+  .upper{display:grid;grid-template-columns:1fr 620px;height:660px;
+    border-bottom:1px solid var(--line)}
+
+  /* 氣泡區 */
+  .bubbles{position:relative;border-right:1px solid var(--line);overflow:hidden}
+  .bubbles-head{position:absolute;top:20px;left:24px;right:24px;display:flex;
+    align-items:center;gap:12px;z-index:10}
+  .chip{height:28px;padding:0 14px;border:1px solid var(--line);border-radius:100vh;
+    display:grid;place-items:center;font-size:12px;color:#666;background:#fff}
+  .chip.on{border-color:var(--ink);color:var(--ink);font-weight:600}
+
+  /* 氣泡：尺寸=常態曲線的投入強度、深淺=完成度（越做越深） */
+  .bub{position:absolute;border-radius:50%;cursor:pointer;background:var(--fill);
+    display:grid;place-items:center;color:#fff;font-size:11px;text-align:center;
+    padding:6px;overflow:hidden;transition:transform .2s, box-shadow .2s;
+    isolation:isolate}
+  .bub:hover{transform:scale(1.05)}
+  .bub.sel{box-shadow:0 0 0 2.5px var(--ink)}
+  .bub.done{animation:float-away 2.2s cubic-bezier(.3,0,.6,1) forwards}
+  @keyframes float-away{
+    0%{transform:translateY(0) scale(1);opacity:var(--op)}
+    25%{transform:translateY(-14px) scale(1.12);opacity:1}
+    100%{transform:translateY(-320px) scale(.55);opacity:0}
+  }
+
+  /* 深淺圖例 */
+  .legend{position:absolute;bottom:20px;left:24px;display:flex;align-items:center;
+    gap:10px;font-size:11px;color:#999;font-family:system-ui;z-index:10}
+  .legend-bar{width:180px;height:10px;border-radius:100vh;
+    background:linear-gradient(90deg,rgba(110,110,110,.18),rgba(110,110,110,1))}
+
+  /* 詳細卡片 */
+  .detail{padding:24px;display:flex;flex-direction:column;position:relative}
+  .d-head{display:flex;align-items:flex-start;gap:16px;padding-bottom:16px;
+    border-bottom:1px solid var(--line)}
+  .d-title{flex:1}
+  .bar{background:var(--fill-soft);border-radius:3px}
+  .d-sec{padding:16px 0;border-bottom:1px solid var(--line-soft)}
+  .d-label{font-size:11px;color:#999;letter-spacing:.08em;margin-bottom:10px;
+    font-family:system-ui}
+
+  .steps{display:flex;align-items:center;gap:0}
+  .step{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--line);
+    display:grid;place-items:center;font-size:11px;color:#aaa;background:#fff;
+    flex:none;cursor:pointer;font-family:system-ui}
+  .step.done{background:var(--fill);border-color:var(--fill);color:#fff}
+  .step.now{border-color:var(--ink);border-width:2.5px;color:var(--ink);font-weight:700}
+  .step-line{height:1.5px;background:var(--line);flex:1}
+  .step-line.done{background:var(--fill)}
+
+  .log{display:flex;gap:12px;padding:10px 0;border-bottom:1px dashed var(--line-soft)}
+  .log-date{width:74px;flex:none;font-size:11px;color:#999;padding-top:2px;
+    font-family:system-ui}
+  .log-body{flex:1;display:flex;flex-direction:column;gap:5px}
+  .log-input{margin-top:12px;height:38px;border:1px solid var(--line);border-radius:6px;
+    display:flex;align-items:center;padding:0 12px;color:#bbb;font-size:13px}
+
+  .link{display:flex;align-items:center;gap:10px;padding:8px 0}
+  .link-tag{height:22px;padding:0 10px;border:1px solid var(--line);border-radius:3px;
+    font-size:11px;color:#777;display:grid;place-items:center;flex:none;
+    font-family:system-ui}
+
+  /* ---- 下半 ---- */
+  .lower{display:grid;grid-template-columns:280px 1fr;height:520px}
+  .side{border-right:1px solid var(--line);padding:20px 0}
+  .side-grp{padding:0 20px 18px}
+  .side-item{display:flex;align-items:center;gap:10px;height:34px;padding:0 8px;
+    border-radius:5px;font-size:13px;color:#555}
+  .side-item.on{background:#f0f0f0;color:var(--ink);font-weight:600}
+  .side-count{margin-left:auto;font-size:11px;color:#aaa;font-family:system-ui}
+
+  .list{overflow:hidden}
+  .l-head,.l-row{display:grid;grid-template-columns:1fr 96px 130px 120px 110px;gap:16px;
+    padding:0 24px;align-items:center}
+  .l-head{padding:14px 24px;border-bottom:1.5px solid var(--line);
+    font-size:11px;color:#999;letter-spacing:.06em;font-family:system-ui}
+  .l-row{height:56px;border-bottom:1px solid var(--line-soft)}
+  .l-row.top{background:#fafafa}
+  .dot-wrap{display:flex;align-items:center;gap:8px}
+  .dot{width:16px;height:16px;border-radius:50%;background:var(--fill);flex:none}
+  .pct{font-size:11px;color:#888;font-family:system-ui}
+  .stage{height:22px;padding:0 10px;border:1px solid var(--line);border-radius:100vh;
+    font-size:11px;color:#666;display:inline-grid;place-items:center;font-family:system-ui}
+
+  /* ---- 規格 ---- */
+  .spec{width:1600px;margin:40px auto 0;background:#fff;border:1px solid var(--line);
+    padding:32px 36px}
+  .spec h2{font-size:17px;margin:0 0 4px}
+  .spec .sub{color:#888;font-size:13px;margin-bottom:24px}
+  .spec-item{display:grid;grid-template-columns:28px 150px 1fr;gap:14px;
+    padding:14px 0;border-top:1px solid var(--line-soft);align-items:start}
+  .spec-n{background:var(--note);color:#fff;width:22px;height:22px;border-radius:50%;
+    display:grid;place-items:center;font-size:12px;font-weight:700;font-family:system-ui}
+  .spec-k{font-weight:600}
+  .spec-v{color:#444}
+  .spec-v b{color:var(--ink)}
+  .warn{background:#fff8e6;border-left:3px solid #d9a300;padding:12px 16px;
+    margin-top:10px;font-size:13px}
+  code{background:#f0f0f0;padding:1px 5px;border-radius:3px;font-size:12px}
+</style>
+</head>
+<body>
+
+<div class="frame">
+
+  <div class="topbar">
+    <div class="anno" style="top:20px;left:-32px">1</div>
+    <div class="logo"></div>
+    <div class="search"></div>
+    <div class="spacer"></div>
+    <div class="btn ghost" onclick="demoDone()">▶ 完了アニメ確認</div>
+    <div class="btn">＋ 新規案件</div>
+  </div>
+
+  <div class="upper">
+
+    <div class="bubbles" id="bubbles">
+      <div class="anno" style="top:90px;left:-32px">2</div>
+      <div class="bubbles-head">
+        <div class="chip on">全部 12</div>
+        <div class="chip">進行中 7</div>
+        <div class="chip">待機 3</div>
+        <div class="chip">完了間近 2</div>
+      </div>
+      <div class="legend">
+        <span>着手</span><div class="legend-bar"></div><span>完了直前</span>
+      </div>
+    </div>
+
+    <div class="detail">
+      <div class="anno" style="top:20px;left:-11px">3</div>
+
+      <div class="d-head">
+        <div class="d-title">
+          <div class="bar" style="width:280px;height:20px;margin-bottom:8px"></div>
+          <div class="bar" style="width:170px;height:11px;background:#ececec"></div>
+        </div>
+        <div class="step" style="width:30px;height:30px">⋯</div>
+      </div>
+
+      <div class="d-sec">
+        <div class="d-label">進捗　6 / 10</div>
+        <div class="steps">
+          <div class="step done">✓</div><div class="step-line done"></div>
+          <div class="step done">✓</div><div class="step-line done"></div>
+          <div class="step done">✓</div><div class="step-line done"></div>
+          <div class="step done">✓</div><div class="step-line done"></div>
+          <div class="step done">✓</div><div class="step-line done"></div>
+          <div class="step done">✓</div><div class="step-line"></div>
+          <div class="step now">7</div><div class="step-line"></div>
+          <div class="step">8</div><div class="step-line"></div>
+          <div class="step">9</div><div class="step-line"></div>
+          <div class="step">10</div>
+        </div>
+        <div class="anno" style="top:132px;right:-11px">4</div>
+      </div>
+
+      <div class="d-sec" style="flex:1;overflow:hidden">
+        <div class="d-label">作業ログ</div>
+        <div class="log">
+          <div class="log-date">08/13 14:20</div>
+          <div class="log-body">
+            <div class="bar" style="width:100%;height:10px"></div>
+            <div class="bar" style="width:72%;height:10px"></div>
+          </div>
+        </div>
+        <div class="log">
+          <div class="log-date">08/12 10:05</div>
+          <div class="log-body"><div class="bar" style="width:88%;height:10px"></div></div>
+        </div>
+        <div class="log">
+          <div class="log-date">08/09 17:40</div>
+          <div class="log-body">
+            <div class="bar" style="width:95%;height:10px"></div>
+            <div class="bar" style="width:40%;height:10px"></div>
+          </div>
+        </div>
+        <div class="log-input">＋ ログを追加…</div>
+        <div class="anno" style="top:300px;right:-11px">5</div>
+      </div>
+
+      <div class="d-sec" style="border-bottom:0">
+        <div class="d-label">リンク</div>
+        <div class="link"><div class="link-tag">Drive</div>
+          <div class="bar" style="flex:1;height:10px"></div></div>
+        <div class="link"><div class="link-tag">Figma</div>
+          <div class="bar" style="flex:1;height:10px"></div></div>
+        <div class="link"><div class="link-tag">ローカル</div>
+          <div class="bar" style="flex:1;height:10px"></div></div>
+        <div class="anno" style="bottom:20px;right:-11px">6</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="lower">
+    <div class="side">
+      <div class="anno" style="top:20px;left:-32px">7</div>
+      <div class="side-grp">
+        <div class="d-label" style="padding:0 8px">ステータス</div>
+        <div class="side-item on">進行中 <span class="side-count">7</span></div>
+        <div class="side-item">待機 <span class="side-count">3</span></div>
+        <div class="side-item">完了間近 <span class="side-count">2</span></div>
+        <div class="side-item">完了 <span class="side-count">28</span></div>
+      </div>
+      <div class="side-grp">
+        <div class="d-label" style="padding:0 8px">クライアント</div>
+        <div class="side-item">A社 <span class="side-count">4</span></div>
+        <div class="side-item">B社 <span class="side-count">3</span></div>
+        <div class="side-item">社内 <span class="side-count">5</span></div>
+      </div>
+    </div>
+
+    <div class="list">
+      <div class="anno" style="top:14px;right:-11px">8</div>
+      <div class="l-head">
+        <div>案件名</div><div>進捗</div><div>ステータス</div><div>最終更新 ↓</div><div>リンク</div>
+      </div>
+      <div id="rows"></div>
+    </div>
+  </div>
+</div>
+
+<div class="spec">
+  <h2>規格說明 v2</h2>
+  <div class="sub">2026-08-13 更新：取消進度環，改用深淺表示完成度。編號對應上方藍點。</div>
+
+  <div class="spec-item">
+    <div class="spec-n">1</div><div class="spec-k">頂列</div>
+    <div class="spec-v">搜尋、<b>＋新規案件</b>。左邊那顆灰按鈕只是這份 wireframe 用來預覽完成動畫的，實品不需要。</div>
+  </div>
+
+  <div class="spec-item">
+    <div class="spec-n">2</div><div class="spec-k">氣泡區</div>
+    <div class="spec-v">
+      一顆氣泡＝一個案件，在左上區域內漂浮並互相碰撞。兩個編碼互相獨立：
+      <br><br>
+      <b>尺寸 ＝ 當前投入強度</b>，隨進度走常態曲線：
+      <code>size = 30 + scale × 130 × (0.35 + 0.65 × sin(progress × π))</code><br>
+      剛開始小 → 中期最大 → 收尾又變小。
+      <br><br>
+      <b>深淺 ＝ 完成度，越做越深</b>：
+      <code>opacity = 0.18 + 0.82 × progress</code><br>
+      剛建立時最淡，完成前最深。
+      <div class="warn">
+        <b>為什麼深淺是遞增而不是遞減：</b>尺寸在收尾階段已經變小，如果顏色同時變淡，
+        快做完的案子會變成畫面上最不顯眼的東西——但「剩最後一哩卻卡住」正是最容易被忘記的狀態。
+        深淺遞增之後，收尾中的案子是<b>小而深</b>，一個濃縮的深點，反而會跳出來提醒你去收掉它。
+      </div>
+    </div>
+  </div>
+
+  <div class="spec-item">
+    <div class="spec-n">3</div><div class="spec-k">詳細卡片</div>
+    <div class="spec-v">
+      顯示選中案件。<b>未選取時直接顯示「最後更新的案件」</b>，不做「請點擊氣泡」那種教學型空狀態——
+      那種提示只有第一次有用，之後每次看到都是浪費一整塊版面。
+      <br><br>
+      「最後更新」指最後有<b>寫入</b>的案件（推進度、加日誌、改連結），<b>不含單純點開看過</b>。
+      否則瀏覽一輪之後卡片會亂跳。
+      <br><br>
+      每次開啟 app 一律顯示最後更新的那件，<b>不要記憶上次選取的案件</b>——上次點的可能只是隨手看看，
+      而「最後動過的」通常就是你要繼續做的。
+      <br><br>
+      真正的空狀態只有一個案件都沒有時才出現：空表格 ＋ 一個明顯的「＋新規案件」。
+    </div>
+  </div>
+
+  <div class="spec-item">
+    <div class="spec-n">4</div><div class="spec-k">進度節點</div>
+    <div class="spec-v">1–10 可點擊推進。<b>這是操作不是顯示</b>——點下去要即時改變對應氣泡的尺寸與深淺。點到第 10 個時觸發完成流程。</div>
+  </div>
+
+  <div class="spec-item">
+    <div class="spec-n">5</div><div class="spec-k">作業ログ</div>
+    <div class="spec-v">時間倒序。底部常駐一行輸入框，<b>一行就能記一筆</b>。這是整個介面唯一每天都會碰的地方，不要藏起來也不要做成要先點「新增」才展開。</div>
+  </div>
+
+  <div class="spec-item">
+    <div class="spec-n">6</div><div class="spec-k">リンク</div>
+    <div class="spec-v">多筆，每筆有類型標籤。本機路徑用 <code>file://</code>，點擊直接開資料夾。</div>
+  </div>
+
+  <div class="spec-item">
+    <div class="spec-n">7</div><div class="spec-k">側欄篩選</div>
+    <div class="spec-v">狀態與客戶兩組。<b>篩選同時作用於氣泡區與列表</b>，兩邊永遠是同一批資料的兩種呈現。</div>
+  </div>
+
+  <div class="spec-item">
+    <div class="spec-n">8</div><div class="spec-k">列表</div>
+    <div class="spec-v">按最終更新倒序，最新自動置頂並短暫高亮。進度欄用小圓點＋百分比——<b>小尺寸下深淺不好辨識，所以補上數字</b>。點擊列＝進入完整專案頁（與點氣泡的快速預覽不同）。</div>
+  </div>
+
+  <div class="spec-item">
+    <div class="spec-n">✓</div><div class="spec-k">完成動畫</div>
+    <div class="spec-v">
+      推到第 10 個節點並確認後：氣泡<b>先短暫變大變實</b>（最後一次呼吸），接著往上飄走並淡出，畫面空出一塊。
+      案件移入「完了」，仍可從列表查閱。
+      <br>按頂列那顆「完了アニメ確認」可以預覽。
+    </div>
+  </div>
+</div>
+
+<script>
+// scale = 案子規模；prog = 完成度 0–1
+const DATA = [
+  {n:'A社 LP',    scale:1.00, prog:.62},
+  {n:'B社 バナー', scale:0.72, prog:.90},
+  {n:'社内ツール', scale:0.95, prog:.30},
+  {n:'名刺',      scale:0.40, prog:.10},
+  {n:'展示会',    scale:0.80, prog:.45},
+  {n:'資料',      scale:0.45, prog:.85},
+  {n:'SNS',      scale:0.62, prog:.55},
+  {n:'ロゴ',      scale:0.55, prog:.05},
+  {n:'動画',      scale:0.70, prog:.72},
+  {n:'印刷物',    scale:0.50, prog:.96},
+  {n:'改修',      scale:0.48, prog:.20},
+  {n:'調査',      scale:0.38, prog:.40},
+];
+const sizeOf = p => 30 + 130 * (0.35 + 0.65 * Math.sin(p * Math.PI));
+const opOf   = p => 0.18 + 0.82 * p;
+
+const box = document.getElementById('bubbles');
+
+// ---- 自動排列：碰撞鬆弛 + 微弱向心力（d3-force collision 的簡化版）----
+// 實品請直接用 d3-force，這裡只是讓 wireframe 的分布接近真實結果
+const PAD = {top:78, bottom:52, side:18};   // 上避開篩選 chip、下避開圖例
+function layout(sizes, W, H){
+  const n = sizes.length;
+  const cx = W/2, cy = (PAD.top + (H-PAD.bottom))/2;
+  // 確定性初始配置：黃金角螺旋，大的排中間
+  const order = sizes.map((s,i)=>[s,i]).sort((a,b)=>b[0]-a[0]).map(x=>x[1]);
+  const pos = new Array(n);
+  order.forEach((idx,k)=>{
+    const a = k * 2.399963, r = 26 * Math.sqrt(k);
+    pos[idx] = {x: cx + r*Math.cos(a), y: cy + r*Math.sin(a)};
+  });
+  for(let iter=0; iter<600; iter++){
+    for(let i=0;i<n;i++) for(let j=i+1;j<n;j++){
+      const dx=pos[j].x-pos[i].x, dy=pos[j].y-pos[i].y;
+      const d=Math.hypot(dx,dy)||.01, min=(sizes[i]+sizes[j])/2 + 10;
+      if(d<min){
+        const push=(min-d)/d*0.5, ox=dx*push, oy=dy*push;
+        pos[i].x-=ox; pos[i].y-=oy; pos[j].x+=ox; pos[j].y+=oy;
+      }
+    }
+    for(let i=0;i<n;i++){
+      pos[i].x += (cx-pos[i].x)*0.008;          // 向心，避免整團散開
+      pos[i].y += (cy-pos[i].y)*0.008;
+      const r=sizes[i]/2;
+      pos[i].x=Math.max(PAD.side+r, Math.min(W-PAD.side-r, pos[i].x));
+      pos[i].y=Math.max(PAD.top+r,  Math.min(H-PAD.bottom-r, pos[i].y));
+    }
+  }
+  return pos.map((p,i)=>[Math.round(p.x-sizes[i]/2), Math.round(p.y-sizes[i]/2)]);
+}
+const SIZES = DATA.map(d=>Math.round(sizeOf(d.prog)*d.scale+26));
+const POS = layout(SIZES, box.clientWidth||979, box.clientHeight||660);
+
+DATA.forEach((d,i)=>{
+  const s = SIZES[i];
+  const op = opOf(d.prog);
+  const [x,y] = POS[i];
+  const el = document.createElement('div');
+  el.className = 'bub' + (i===0?' sel':'');
+  el.style.cssText = `left:${x}px;top:${y}px;width:${s}px;height:${s}px;opacity:${op};--op:${op}`;
+  el.textContent = s > 78 ? d.n : '';
+  el.title = `${d.n}　${Math.round(d.prog*100)}%　${s}px`;
+  el.onclick = () => {
+    document.querySelectorAll('.bub').forEach(b=>b.classList.remove('sel'));
+    el.classList.add('sel');
+  };
+  el.animate(
+    [{translate:'0 0'},{translate:`${(i%3-1)*8}px ${(i%2?-1:1)*10}px`},{translate:'0 0'}],
+    {duration:5200+i*380, iterations:Infinity, easing:'ease-in-out'}
+  );
+  box.appendChild(el);
+});
+
+// 列表：進度用小圓點的深淺 + 百分比數字
+const rows = document.getElementById('rows');
+[...DATA].sort((a,b)=>b.prog-a.prog).slice(0,7).forEach((d,i)=>{
+  const r=document.createElement('div');
+  r.className='l-row'+(i===0?' top':'');
+  const stage = d.prog>.85?'完了間近' : d.prog<.2?'待機':'進行中';
+  r.innerHTML=`
+    <div class="bar" style="width:${40+d.scale*40}%;height:12px"></div>
+    <div class="dot-wrap"><div class="dot" style="opacity:${opOf(d.prog)}"></div>
+      <span class="pct">${Math.round(d.prog*100)}%</span></div>
+    <div><span class="stage">${stage}</span></div>
+    <div class="bar" style="width:78px;height:10px;background:#ececec"></div>
+    <div class="bar" style="width:${30+i*6}px;height:10px;background:#ececec"></div>`;
+  rows.appendChild(r);
+});
+
+// 完成動畫預覽
+function demoDone(){
+  const b = document.querySelectorAll('.bub')[9]; // 印刷物 96%
+  if(!b) return;
+  b.classList.remove('done'); void b.offsetWidth;
+  b.classList.add('done');
+  setTimeout(()=>{ b.classList.remove('done'); }, 2600);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>作業記録 — Ameba style</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=IBM+Plex+Mono:wght@400&family=Noto+Sans+JP:wght@300;400;500&display=swap');
+
+/* ===========================================================================
+   Ameba — Style Reference をそのまま適用
+   トークンは DESIGN.md の Quick Start からそのまま持ってきている（改変なし）
+   =========================================================================== */
+:root{
+  /* Colors */
+  --midnight-ink:#00052e;
+  --signal-blue:#0428cb;
+  --arc-cyan:#34fcff;
+  --halo-violet:#afb4db;
+  --carbon:#222222;
+  --slate-body:#4f5166;
+  --fog:#6b6b83;
+  --mist:#8185a0;
+  --silver-border:#dbdcdf;
+  --paper:#ffffff;
+  --violet-wash:#06105a;
+
+  /* Type — F37 Bolton → Inter 300 / Open Sauce Sans → Inter / 日本語は Noto Sans JP */
+  --font-display:'Inter','Noto Sans JP',ui-sans-serif,system-ui,sans-serif;
+  --font-body:'Inter','Noto Sans JP',ui-sans-serif,system-ui,sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+
+  /* Scale */
+  --text-micro:11px;   --leading-micro:1.82;   --tracking-micro:1px;
+  --text-caption:14px; --leading-caption:1.5;
+  --text-body-sm:16px; --leading-body-sm:1.54;
+  --text-subheading:27px; --leading-subheading:1.41; --tracking-subheading:-0.41px;
+
+  /* Radius — 8px を超えない（Don't: pill / 大きな角丸は禁止） */
+  --radius-tags:4px; --radius-cards:8px; --radius-buttons:8px;
+
+  --card-padding:20px;
+  --element-gap:10px;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+
+body{
+  background:var(--midnight-ink);
+  color:var(--paper);
+  font-family:var(--font-body);
+  font-size:var(--text-caption);
+  line-height:var(--leading-caption);
+  font-weight:400;
+  padding:32px;
+  -webkit-font-smoothing:antialiased;
+}
+
+.frame{
+  width:1600px;margin:0 auto;
+  background:var(--midnight-ink);
+  border:1px solid var(--slate-body);
+  border-radius:var(--radius-cards);
+  overflow:hidden;
+}
+
+/* データ／システム系のラベルはすべて mono・広めのトラッキング */
+.meta{
+  font-family:var(--font-mono);
+  font-size:var(--text-micro);
+  line-height:var(--leading-micro);
+  letter-spacing:0.085em;
+  color:var(--fog);
+  text-transform:uppercase;
+}
+
+/* ---- 頂列：ボーダーもロゴ枠も持たない、暗いキャンバスに浮かぶだけ ---- */
+.topbar{
+  height:64px;display:flex;align-items:center;gap:16px;
+  padding:0 24px;border-bottom:1px solid var(--slate-body);
+}
+.wordmark{
+  font-family:var(--font-display);font-weight:300;font-size:18px;
+  letter-spacing:-0.01em;color:var(--paper);
+}
+.search{
+  flex:1;max-width:320px;height:34px;
+  border:1px solid var(--slate-body);border-radius:var(--radius-buttons);
+  background:transparent;padding:0 12px;
+  display:flex;align-items:center;
+  font-family:var(--font-mono);font-size:var(--text-micro);
+  letter-spacing:0.085em;color:var(--fog);
+}
+.spacer{flex:1}
+
+/* Primary CTA：システム内で唯一の塗りボタン */
+.btn{
+  height:36px;padding:0 20px;border-radius:var(--radius-buttons);
+  display:grid;place-items:center;cursor:pointer;
+  font-family:var(--font-display);font-size:var(--text-caption);
+  font-weight:400;letter-spacing:0.05em;
+  background:var(--signal-blue);color:var(--paper);border:none;
+  transition:opacity .15s;
+}
+.btn:hover{opacity:.86}
+/* Ghost：枠も塗りもなし、位置と字色だけで階層をつくる */
+.btn.ghost{
+  background:transparent;color:var(--fog);
+  font-family:var(--font-mono);font-size:var(--text-micro);
+  letter-spacing:0.085em;text-transform:uppercase;
+}
+.btn.ghost:hover{color:var(--paper);opacity:1}
+
+/* ---- 上半 ---- */
+.upper{display:grid;grid-template-columns:1fr 620px;height:660px;
+  border-bottom:1px solid var(--slate-body)}
+
+/* 気泡エリア＝ Ameba のパーティクル球にあたる唯一の「大気」ゾーン。
+   ラジアルグラデーション（#06105a → #00052e）だけで奥行きを出す。 */
+.bubbles{
+  position:relative;overflow:hidden;
+  border-right:1px solid var(--slate-body);
+  background:radial-gradient(ellipse 70% 60% at 50% 46%, var(--violet-wash) 0%, var(--midnight-ink) 72%);
+}
+.bubbles-head{position:absolute;top:20px;left:24px;right:24px;
+  display:flex;align-items:center;gap:8px;z-index:10}
+
+/* フィルタ chip：4px 角丸のタグ扱い、mono */
+.chip{
+  height:26px;padding:0 10px;border-radius:var(--radius-tags);
+  border:1px solid var(--slate-body);background:transparent;
+  display:grid;place-items:center;cursor:pointer;
+  font-family:var(--font-mono);font-size:var(--text-micro);
+  letter-spacing:0.085em;color:var(--fog);
+  transition:.15s;
+}
+.chip:hover{border-color:var(--fog);color:var(--mist)}
+.chip.on{border-color:var(--paper);color:var(--paper)}
+
+/* 気泡：塗りは Halo Violet 固定。濃淡＝完了度、サイズ＝投入強度。
+   Signal Blue を塗りに使わないのは、暗い紺地では 0.18 の低不透明度が
+   背景に沈んで見えなくなるため（Halo Violet は淡いので低不透明でも残る）。 */
+.bub{
+  position:absolute;border-radius:50%;cursor:pointer;
+  background:var(--halo-violet);
+  display:grid;place-items:center;
+  color:var(--midnight-ink);
+  font-family:var(--font-body);font-weight:500;font-size:12px;
+  text-align:center;padding:6px;overflow:hidden;
+  transition:transform .2s, box-shadow .2s;
+  isolation:isolate;
+}
+.bub:hover{transform:scale(1.05)}
+/* 選択：白のヘアラインリング＋ Arc Cyan のグロー。
+   Arc Cyan は「パーティクルの発光」用途のみ許可されているので、
+   ボーダーではなく box-shadow のにじみとして使う。 */
+.bub.sel{
+  box-shadow:0 0 0 2px var(--paper), 0 0 28px 6px rgba(52,252,255,.28);
+}
+.bub.done{animation:float-away 2.2s cubic-bezier(.3,0,.6,1) forwards}
+@keyframes float-away{
+  0%{transform:translateY(0) scale(1);opacity:var(--op)}
+  25%{transform:translateY(-14px) scale(1.12);opacity:1}
+  100%{transform:translateY(-320px) scale(.55);opacity:0}
+}
+
+.legend{position:absolute;bottom:20px;left:24px;display:flex;align-items:center;
+  gap:10px;z-index:10}
+.legend-bar{width:180px;height:8px;border-radius:var(--radius-tags);
+  background:linear-gradient(90deg,rgba(175,180,219,.18),rgba(175,180,219,1))}
+
+/* ---- 詳細カード ---- */
+.detail{padding:var(--card-padding) 24px;display:flex;flex-direction:column}
+.d-head{display:flex;align-items:flex-start;gap:16px;padding-bottom:16px;
+  border-bottom:1px solid var(--slate-body)}
+.d-title{flex:1}
+.case-name{
+  font-family:var(--font-display);font-weight:300;
+  font-size:var(--text-subheading);line-height:var(--leading-subheading);
+  letter-spacing:var(--tracking-subheading);color:var(--paper);
+}
+.case-sub{margin-top:6px}
+.d-sec{padding:16px 0;border-bottom:1px solid var(--slate-body)}
+.d-label{margin-bottom:12px}
+
+/* 進捗ノード：塗りは Signal Blue（＝タイムライン系の唯一の用途） */
+.steps{display:flex;align-items:center;gap:0}
+.step{
+  width:26px;height:26px;border-radius:50%;
+  border:1px solid var(--slate-body);background:transparent;
+  display:grid;place-items:center;flex:none;cursor:pointer;
+  font-family:var(--font-mono);font-size:10px;color:var(--fog);
+  transition:.15s;
+}
+.step:hover{border-color:var(--paper);color:var(--paper)}
+.step.done{background:var(--signal-blue);border-color:var(--signal-blue);color:var(--paper)}
+.step.now{border-color:var(--paper);border-width:2px;color:var(--paper)}
+.step-line{height:1px;background:var(--slate-body);flex:1}
+.step-line.done{background:var(--signal-blue)}
+
+/* 作業ログ：タイムスタンプは mono、本文は body */
+.log{display:flex;gap:14px;padding:9px 0;border-bottom:1px solid rgba(79,81,102,.45)}
+.log-date{width:88px;flex:none;padding-top:2px}
+.log-body{flex:1;color:var(--paper);font-size:var(--text-caption)}
+/* このアプリで唯一毎日触る場所。常駐・一行・即入力。 */
+.log-input{
+  margin-top:14px;height:40px;flex:none;
+  border:1px solid var(--slate-body);border-radius:var(--radius-buttons);
+  display:flex;align-items:center;padding:0 14px;gap:10px;
+  color:var(--fog);font-size:var(--text-caption);
+  transition:border-color .15s;
+}
+.log-input:hover{border-color:var(--fog)}
+.log-input .caret{width:1px;height:16px;background:var(--arc-cyan);opacity:.85;
+  animation:blink 1.2s steps(2) infinite}
+@keyframes blink{0%,50%{opacity:.85}51%,100%{opacity:0}}
+
+.link{display:flex;align-items:center;gap:12px;padding:7px 0}
+.link-tag{
+  height:22px;padding:0 8px;border-radius:var(--radius-tags);
+  border:1px solid var(--slate-body);
+  display:grid;place-items:center;flex:none;
+  font-family:var(--font-mono);font-size:var(--text-micro);
+  letter-spacing:0.085em;color:var(--mist);text-transform:uppercase;
+}
+.link-path{flex:1;color:var(--fog);font-size:13px;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+
+/* ---- 下半 ---- */
+.lower{display:grid;grid-template-columns:280px 1fr;height:520px}
+.side{border-right:1px solid var(--slate-body);padding:20px 0}
+.side-grp{padding:0 20px 20px}
+.side-grp .d-label{padding:0 8px}
+.side-item{
+  display:flex;align-items:center;gap:10px;height:34px;padding:0 8px;
+  border-radius:var(--radius-tags);color:var(--mist);cursor:pointer;
+  font-size:13px;transition:.15s;
+}
+.side-item:hover{color:var(--paper)}
+.side-item.on{color:var(--paper);border-left:2px solid var(--signal-blue);
+  padding-left:14px;border-radius:0}
+.side-count{margin-left:auto;font-family:var(--font-mono);
+  font-size:var(--text-micro);letter-spacing:0.085em;color:var(--fog)}
+
+.list{overflow:hidden}
+.l-head,.l-row{display:grid;grid-template-columns:1fr 110px 130px 120px 90px;
+  gap:16px;padding:0 24px;align-items:center}
+.l-head{padding:14px 24px;border-bottom:1px solid var(--slate-body)}
+.l-row{height:54px;border-bottom:1px solid rgba(79,81,102,.4);cursor:pointer;
+  transition:background .15s}
+.l-row:hover{background:rgba(6,16,90,.5)}
+.l-row.top{background:rgba(6,16,90,.35)}
+.l-name{color:var(--paper);font-size:var(--text-caption)}
+.dot-wrap{display:flex;align-items:center;gap:9px}
+.dot{width:14px;height:14px;border-radius:50%;background:var(--halo-violet);flex:none}
+.pct{font-family:var(--font-mono);font-size:var(--text-micro);
+  letter-spacing:0.085em;color:var(--mist)}
+/* ステータスタグ：4px 角丸・mono・ヘアラインのみ。色で騒がない。 */
+.stage{
+  height:22px;padding:0 8px;border-radius:var(--radius-tags);
+  border:1px solid var(--slate-body);display:inline-grid;place-items:center;
+  font-family:var(--font-mono);font-size:var(--text-micro);
+  letter-spacing:0.085em;color:var(--fog);
+}
+.stage.near{border-color:var(--fog);color:var(--paper)}
+.l-date,.l-links{font-family:var(--font-mono);font-size:var(--text-micro);
+  letter-spacing:0.085em;color:var(--fog)}
+</style>
+</head>
+<body>
+
+<div class="frame">
+
+  <div class="topbar">
+    <div class="wordmark">作業記録</div>
+    <div class="search">案件を検索…</div>
+    <div class="spacer"></div>
+    <div class="btn ghost" onclick="demoDone()">完了アニメ</div>
+    <div class="btn">＋ 新規案件</div>
+  </div>
+
+  <div class="upper">
+
+    <div class="bubbles" id="bubbles">
+      <div class="bubbles-head">
+        <div class="chip on">全部 12</div>
+        <div class="chip">進行中 7</div>
+        <div class="chip">待機 3</div>
+        <div class="chip">完了間近 2</div>
+      </div>
+      <div class="legend">
+        <span class="meta">着手</span>
+        <div class="legend-bar"></div>
+        <span class="meta">完了直前</span>
+      </div>
+    </div>
+
+    <div class="detail">
+
+      <div class="d-head">
+        <div class="d-title">
+          <div class="case-name" id="caseName">A社 LP</div>
+          <div class="meta case-sub">作成 2026.07.28 ／ 最終更新 08.13 14:20</div>
+        </div>
+        <div class="step">⋯</div>
+      </div>
+
+      <div class="d-sec">
+        <div class="meta d-label">進捗　6 / 10</div>
+        <div class="steps">
+          <div class="step done">✓</div><div class="step-line done"></div>
+          <div class="step done">✓</div><div class="step-line done"></div>
+          <div class="step done">✓</div><div class="step-line done"></div>
+          <div class="step done">✓</div><div class="step-line done"></div>
+          <div class="step done">✓</div><div class="step-line done"></div>
+          <div class="step done">✓</div><div class="step-line"></div>
+          <div class="step now">7</div><div class="step-line"></div>
+          <div class="step">8</div><div class="step-line"></div>
+          <div class="step">9</div><div class="step-line"></div>
+          <div class="step">10</div>
+        </div>
+      </div>
+
+      <div class="d-sec" style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+        <div class="meta d-label">作業ログ</div>
+        <div style="flex:1;overflow:hidden">
+          <div class="log">
+            <div class="meta log-date">08/13 14:20</div>
+            <div class="log-body">ファーストビューの構成を差し替え。クライアント確認待ち。</div>
+          </div>
+          <div class="log">
+            <div class="meta log-date">08/12 10:05</div>
+            <div class="log-body">ワイヤー修正、余白まわりを調整。</div>
+          </div>
+          <div class="log">
+            <div class="meta log-date">08/09 17:40</div>
+            <div class="log-body">初稿提出。全体の方向性は合意。文言は未確定のまま。</div>
+          </div>
+        </div>
+        <div class="log-input"><span class="caret"></span>ログを追加…</div>
+      </div>
+
+      <div class="d-sec" style="border-bottom:0">
+        <div class="meta d-label">リンク</div>
+        <div class="link"><div class="link-tag">Drive</div>
+          <div class="link-path">drive.google.com/…/A社_LP_202608</div></div>
+        <div class="link"><div class="link-tag">Figma</div>
+          <div class="link-path">figma.com/file/…/LP-wireframe</div></div>
+        <div class="link"><div class="link-tag">Local</div>
+          <div class="link-path">file:///Users/…/Desktop/A社/LP</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="lower">
+    <div class="side">
+      <div class="side-grp">
+        <div class="meta d-label">ステータス</div>
+        <div class="side-item on">進行中 <span class="side-count">7</span></div>
+        <div class="side-item">待機 <span class="side-count">3</span></div>
+        <div class="side-item">完了間近 <span class="side-count">2</span></div>
+        <div class="side-item">完了 <span class="side-count">28</span></div>
+      </div>
+      <div class="side-grp">
+        <div class="meta d-label">クライアント</div>
+        <div class="side-item">A社 <span class="side-count">4</span></div>
+        <div class="side-item">B社 <span class="side-count">3</span></div>
+        <div class="side-item">社内 <span class="side-count">5</span></div>
+      </div>
+    </div>
+
+    <div class="list">
+      <div class="l-head">
+        <div class="meta">案件名</div><div class="meta">進捗</div>
+        <div class="meta">ステータス</div><div class="meta">最終更新 ↓</div>
+        <div class="meta">リンク</div>
+      </div>
+      <div id="rows"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// scale = 案件規模；prog = 完了度 0–1
+const DATA = [
+  {n:'A社 LP',     scale:1.00, prog:.62, d:'08/13'},
+  {n:'B社 バナー',  scale:0.72, prog:.90, d:'08/13'},
+  {n:'社内ツール',  scale:0.95, prog:.30, d:'08/12'},
+  {n:'名刺',       scale:0.40, prog:.10, d:'08/11'},
+  {n:'展示会',     scale:0.80, prog:.45, d:'08/11'},
+  {n:'資料',       scale:0.45, prog:.85, d:'08/10'},
+  {n:'SNS',       scale:0.62, prog:.55, d:'08/09'},
+  {n:'ロゴ',       scale:0.55, prog:.05, d:'08/08'},
+  {n:'動画',       scale:0.70, prog:.72, d:'08/07'},
+  {n:'印刷物',     scale:0.50, prog:.96, d:'08/06'},
+  {n:'改修',       scale:0.48, prog:.20, d:'08/05'},
+  {n:'調査',       scale:0.38, prog:.40, d:'08/04'},
+];
+const sizeOf = p => 30 + 130 * (0.35 + 0.65 * Math.sin(p * Math.PI));
+const opOf   = p => 0.18 + 0.82 * p;
+
+const box = document.getElementById('bubbles');
+
+// 自動配置：衝突緩和＋弱い向心力（実装時は d3-force に置き換える）
+const PAD = {top:76, bottom:52, side:18};
+function layout(sizes, W, H){
+  const n = sizes.length;
+  const cx = W/2, cy = (PAD.top + (H-PAD.bottom))/2;
+  const order = sizes.map((s,i)=>[s,i]).sort((a,b)=>b[0]-a[0]).map(x=>x[1]);
+  const pos = new Array(n);
+  order.forEach((idx,k)=>{
+    const a = k * 2.399963, r = 26 * Math.sqrt(k);
+    pos[idx] = {x: cx + r*Math.cos(a), y: cy + r*Math.sin(a)};
+  });
+  for(let iter=0; iter<600; iter++){
+    for(let i=0;i<n;i++) for(let j=i+1;j<n;j++){
+      const dx=pos[j].x-pos[i].x, dy=pos[j].y-pos[i].y;
+      const d=Math.hypot(dx,dy)||.01, min=(sizes[i]+sizes[j])/2 + 10;
+      if(d<min){
+        const push=(min-d)/d*0.5, ox=dx*push, oy=dy*push;
+        pos[i].x-=ox; pos[i].y-=oy; pos[j].x+=ox; pos[j].y+=oy;
+      }
+    }
+    for(let i=0;i<n;i++){
+      pos[i].x += (cx-pos[i].x)*0.008;
+      pos[i].y += (cy-pos[i].y)*0.008;
+      const r=sizes[i]/2;
+      pos[i].x=Math.max(PAD.side+r, Math.min(W-PAD.side-r, pos[i].x));
+      pos[i].y=Math.max(PAD.top+r,  Math.min(H-PAD.bottom-r, pos[i].y));
+    }
+  }
+  return pos.map((p,i)=>[Math.round(p.x-sizes[i]/2), Math.round(p.y-sizes[i]/2)]);
+}
+const SIZES = DATA.map(d=>Math.round(sizeOf(d.prog)*d.scale+26));
+const POS = layout(SIZES, box.clientWidth||979, box.clientHeight||660);
+
+DATA.forEach((d,i)=>{
+  const s = SIZES[i];
+  const op = opOf(d.prog);
+  const [x,y] = POS[i];
+  const el = document.createElement('div');
+  el.className = 'bub' + (i===0?' sel':'');
+  el.style.cssText = `left:${x}px;top:${y}px;width:${s}px;height:${s}px;opacity:${op};--op:${op}`;
+  el.textContent = s > 78 ? d.n : '';
+  el.title = `${d.n}　${Math.round(d.prog*100)}%`;
+  el.onclick = () => {
+    document.querySelectorAll('.bub').forEach(b=>b.classList.remove('sel'));
+    el.classList.add('sel');
+    document.getElementById('caseName').textContent = d.n;
+  };
+  el.animate(
+    [{translate:'0 0'},{translate:`${(i%3-1)*8}px ${(i%2?-1:1)*10}px`},{translate:'0 0'}],
+    {duration:5200+i*380, iterations:Infinity, easing:'ease-in-out'}
+  );
+  box.appendChild(el);
+});
+
+const rows = document.getElementById('rows');
+[...DATA].sort((a,b)=>b.prog-a.prog).slice(0,7).forEach((d,i)=>{
+  const r=document.createElement('div');
+  r.className='l-row'+(i===0?' top':'');
+  const near = d.prog>.85;
+  const stage = near?'完了間近' : d.prog<.2?'待機':'進行中';
+  r.innerHTML=`
+    <div class="l-name">${d.n}</div>
+    <div class="dot-wrap"><div class="dot" style="opacity:${opOf(d.prog)}"></div>
+      <span class="pct">${Math.round(d.prog*100)}%</span></div>
+    <div><span class="stage${near?' near':''}">${stage}</span></div>
+    <div class="l-date">${d.d}</div>
+    <div class="l-links">${(i%3)+1}</div>`;
+  rows.appendChild(r);
+});
+
+function demoDone(){
+  const b = document.querySelectorAll('.bub')[9];
+  if(!b) return;
+  b.classList.remove('done'); void b.offsetWidth;
+  b.classList.add('done');
+  setTimeout(()=>{ b.classList.remove('done'); }, 2600);
+}
+</script>
+</body>
+</html>
