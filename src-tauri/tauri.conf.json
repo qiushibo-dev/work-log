@@ -5,8 +5,8 @@
   "identifier": "com.shihbo.worklog",
   "build": {
     "frontendDist": "../dist",
-    "beforeBuildCommand": "node -e \"const f=require('fs');f.mkdirSync('dist',{recursive:true});f.copyFileSync('app.html','dist/index.html')\"",
-    "beforeDevCommand": "node -e \"const f=require('fs');f.mkdirSync('dist',{recursive:true});f.copyFileSync('app.html','dist/index.html')\""
+    "beforeBuildCommand": "node build.mjs",
+    "beforeDevCommand": "node build.mjs"
   },
   "app": {
     "withGlobalTauri": true,
