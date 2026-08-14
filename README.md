@@ -58,11 +58,28 @@ Windows 沒有 `mkdir -p` 也沒有 `cp`，而 `node -e "…"` 會被 cmd 把引
 
 Windows 的 exe 沒有簽章，第一次開會跳 SmartScreen，要點「其他資訊 → 仍要執行」。
 
-安裝 dmg 後第一次開啟會被 Gatekeeper 擋（ad-hoc 簽名）：
+### 更新已安裝的版本
 
 ```bash
+./update.sh          # 裝最新的 Release
+./update.sh v0.1.7   # 退回特定版本
+```
+
+會自動抓最新 tag、下載 dmg、把舊版丟垃圾桶（可還原）、解除 Gatekeeper 隔離。
+**工作記錄完全不動**——資料在 `~/Library/Application Support/`，跟 app 分開。
+
+手動做的話是這樣：
+
+```bash
+gh release download v0.1.8 --pattern "*.dmg" --clobber
+hdiutil attach Babos_0.1.8_aarch64.dmg -nobrowse
+mv /Applications/Babos.app ~/.Trash/Babos-old.app
+ditto /Volumes/Babos/Babos.app /Applications/Babos.app
+hdiutil detach /Volumes/Babos
 xattr -dr com.apple.quarantine /Applications/Babos.app
 ```
+
+最後那行是必要的——ad-hoc 簽名沒有公證，不解除隔離會被 Gatekeeper 擋。
 
 ### 升版本號要改兩個地方
 
