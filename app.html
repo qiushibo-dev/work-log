@@ -149,9 +149,9 @@ input{font-family:inherit;color:inherit;background:none;border:none;outline:none
   22%{transform:translateY(-14px) scale(1.14);opacity:1}
   100%{transform:translateY(-340px) scale(.5);opacity:0}
 }
-.legend{position:absolute;bottom:16px;left:20px;display:flex;align-items:center;
+.legend{position:absolute;bottom:16px;left:20px;right:20px;display:flex;align-items:center;
   gap:10px;z-index:10;pointer-events:none}
-.legend-bar{width:150px;height:8px;border-radius:var(--pill);
+.legend-bar{flex:1;min-width:0;height:8px;border-radius:var(--pill);
   background:linear-gradient(90deg,var(--legend-from),var(--legend-to))}
 .bub-empty{position:absolute;inset:0;display:grid;place-items:center;
   color:var(--fog);font-size:13px;text-align:center;padding:40px}
@@ -977,9 +977,12 @@ function renderSide(){
     state.cases.forEach(c=>{ if(c[key]) m[c[key]] = (m[c[key]]||0)+1; });
     return Object.entries(m).sort((a,b)=>b[1]-a[1]);
   };
+  /* 各グループ先頭の「All」＝そのグループの絞り込み解除 */
   const group = (label, attr, entries, activeVal) => entries.length ? `
     <div class="side-grp">
       <div class="meta d-label">${label}</div>
+      <button class="side-item${activeVal?'':' on'}" data-${attr}="">
+        ${T.all} <span class="side-count">${state.cases.length}</span></button>
       ${entries.map(([name,n])=>
         `<button class="side-item${activeVal===name?' on':''}" data-${attr}="${esc(name)}">
           ${esc(name)} <span class="side-count">${n}</span></button>`).join('')}
@@ -988,9 +991,10 @@ function renderSide(){
   $('side').innerHTML = `
     <div class="side-grp">
       <div class="meta d-label">${T.statusGroup}</div>
-      ${[['active',counts.active],['idle',counts.idle],['near',counts.near],['done',doneCount]]
+      ${[['all',alive.length],['active',counts.active],['idle',counts.idle],
+         ['near',counts.near],['done',doneCount]]
         .map(([k,n])=>`<button class="side-item${filter.status===k?' on':''}" data-status="${k}">
-          ${STATUS_LABEL[k]} <span class="side-count">${n}</span></button>`).join('')}
+          ${k==='all'?T.all:STATUS_LABEL[k]} <span class="side-count">${n}</span></button>`).join('')}
     </div>
     ${group(T.typeGroup,  'type',   tally('type'),   filter.type)}
     ${group(T.clientGroup,'client', tally('client'), filter.client)}`;
@@ -1211,12 +1215,13 @@ document.addEventListener('click', e => {
     filter.status = (filter.status === v && chip.classList.contains('side-item')) ? 'all' : v;
     renderAll(); return;
   }
+  /* 値が空＝「All」なので、トグル解除と同じく null に戻す */
   const cl = t.closest('[data-client]');
   if(cl){ const v = cl.dataset.client;
-    filter.client = (filter.client === v) ? null : v; renderAll(); return; }
+    filter.client = (!v || filter.client === v) ? null : v; renderAll(); return; }
   const ty = t.closest('[data-type]');
   if(ty){ const v = ty.dataset.type;
-    filter.type = (filter.type === v) ? null : v; renderAll(); return; }
+    filter.type = (!v || filter.type === v) ? null : v; renderAll(); return; }
 
   const row = t.closest('.l-row');
   if(row){ selectedId = row.dataset.id; mode = 'case'; renderAll(); return; }
