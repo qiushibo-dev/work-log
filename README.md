@@ -2,10 +2,11 @@
 
 個人用的工作記錄 app。一個案子一筆記錄，用氣泡的大小與深淺表示「現在佔掉多少腦袋」與「走了多遠」。
 
-macOS 桌面 app（Tauri 打包）。目前 v0.1.6。
+macOS ／ Windows 桌面 app（Tauri 打包）。目前 v0.1.7。
 
-> v0.1.5 已在兩台機器安裝實測通過。**v0.1.6 只做過 build 與語法檢查，還沒實機跑過**——
-> 改動是啟動時的寫入時序，要驗證的話照 HANDOFF.md 第 8 節的清單走一遍。
+> v0.1.5 已在兩台 Mac 安裝實測通過。**v0.1.6 之後的版本只驗證到「build 通過、
+> 瀏覽器裡渲染正常」，沒有實機跑過**，Windows 版更是完全沒人裝過。
+> 要驗證的話照 HANDOFF.md 第 8 節的清單走一遍。
 
 **這個 app 的目的不是專案管理，是留下痕跡。** 記錄工具的死法都一樣——做得漂亮，用兩週就停。
 差別只在「記一筆要幾秒」，所以工作日誌那個常駐的一行輸入框是整個介面最重要的元件。
@@ -34,11 +35,28 @@ open app.html
 
 # 打包成 dmg
 npx --yes @tauri-apps/cli@^2 build
-# → src-tauri/target/release/bundle/dmg/Babos_0.1.6_aarch64.dmg
+# → src-tauri/target/release/bundle/dmg/Babos_0.1.7_aarch64.dmg
 ```
 
-沒有 `package.json`。`beforeBuildCommand` 會把 `app.html` 複製成 `dist/index.html`，
-所以**編輯的對象永遠是根目錄的 `app.html`**，`dist/` 是建置產物。
+沒有 `package.json`。`beforeBuildCommand` 執行 `build.mjs`，把 `app.html` 複製成
+`dist/index.html`、把 `fonts/` 複製進 `dist/`。所以**編輯的對象永遠是根目錄的 `app.html`**，
+`dist/` 是建置產物。
+
+### Windows 版
+
+推一個 tag 就會由 GitHub Actions 同時產出 dmg 與 exe，自動掛上 Release：
+
+```bash
+git tag v0.1.8 && git push origin v0.1.8
+```
+
+手動觸發（`gh workflow run release.yml`）則不發 Release，只留成品當 artifact，適合測試。
+
+設定在 [.github/workflows/release.yml](.github/workflows/release.yml)。三個踩過的坑寫在
+HANDOFF.md 第 7 節——最重要的是**`beforeBuildCommand` 不能寫 shell 指令**，
+Windows 沒有 `mkdir -p` 也沒有 `cp`，而 `node -e "…"` 會被 cmd 把引號吃掉。
+
+Windows 的 exe 沒有簽章，第一次開會跳 SmartScreen，要點「其他資訊 → 仍要執行」。
 
 安裝 dmg 後第一次開啟會被 Gatekeeper 擋（ad-hoc 簽名）：
 
@@ -92,10 +110,25 @@ localStorage（key: `work-tracker-v1`）同時保留一份當保險，但**JSON 
 
 | 路徑 | 內容 |
 |---|---|
-| `app.html` | **app 本體**。單一檔案、零依賴，含 CSS 與全部 JS（約 1,890 行） |
+| `app.html` | **app 本體**。單一檔案、零依賴，含 CSS 與全部 JS（約 1,920 行） |
+| `fonts/` | 同捆的歐文字體（Inter、IBM Plex Mono，共 156KB） |
+| `build.mjs` | `beforeBuildCommand` 呼叫的複製腳本。**不要改回 shell 指令**，Windows 會壞 |
 | `src-tauri/` | Tauri 設定、Rust 進入點、圖示。Rust 端幾乎沒有邏輯，只註冊 fs 與 dialog 外掛 |
-| `dist/` | 建置產物（`app.html` 的複本），不進版控 |
+| `dist/` | 建置產物（`app.html` ＋ `fonts/` 的複本），不進版控 |
 | `docs/` | wireframe、設計來源截圖、給 Claude Design 用的 prompt |
+| `.github/workflows/` | 雙平台建置的 CI |
+
+### 字體
+
+歐文（Inter、IBM Plex Mono）**同捆在 `fonts/`**，走 `@font-face` 的相對路徑。
+Inter 是可變字體，一個檔涵蓋 300–500 全部字重。
+
+**和文與中文用系統字體**——macOS 落在 Hiragino Sans／PingFang TC，Windows 落在
+Yu Gothic UI／Microsoft JhengHei。不同捆的理由是大小：Noto Sans JP 單獨就 4MB，
+TC 再 5MB，會讓 app 從 3MB 變成 12MB。要完全一致的話就得付這個代價。
+
+> v0.1.7 之前是用 `@import` 從 Google Fonts 抓的。那是這份「單一檔案、零依賴」
+> 架構裡唯一的網路依賴——離線時字會變，而且每次啟動都往外連。
 
 ### `app.html` 裡的區塊順序
 

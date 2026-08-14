@@ -230,6 +230,56 @@ localStorage への同期書き込みはゲートの対象外なので、保険�
 
 ---
 
+## 6-b. v0.1.7 — Windows 対応とフォント同梱
+
+### Windows ビルドを CI に載せた
+
+`.github/workflows/release.yml`。タグを push すれば mac / Windows 両方が出る。
+Mac 上で Windows 版は作れない（MSVC ツールチェーンが要る）ので、そこは諦めて CI に投げる。
+
+踩んだ穴が3つ：
+
+1. **`beforeBuildCommand` に shell のコマンドを書いてはいけない。**
+   元の `mkdir -p dist && cp app.html dist/index.html` は Windows に
+   `mkdir -p` も `cp` も無いので動かない。`node -e "…"` に書き換えたら、
+   今度は cmd が引用符を食って `SyntaxError: Invalid or unexpected token` で落ちた。
+   **最終形は `build.mjs` という独立したスクリプト。** shell の引用符解釈を一切通らない。
+   **ここを shell に戻さないこと。**
+2. **`bundle.targets` を `"all"` にしない。** `["dmg","nsis"]` と明示する。
+   対象外のプラットフォームでは自動的に無視されるので、同じ設定を両方で使える
+3. **macOS の codesign は間欠的に落ちる。**
+   `resource fork, Finder information, or similar detritus not allowed`。
+   同じ設定で2回走らせて1回目だけ落ちた。**設定の問題ではない。踏んだら retry。**
+   （一度これを targets の問題と誤診してコミットメッセージに書いた。訂正済み）
+
+Actions の無料枠は private リポジトリで月 2000 分。**macOS runner は 10倍、
+Windows は 2倍で消費する**ので、1回の両対応ビルドで 60〜90 分ぶん減る。連打しないこと。
+
+### 欧文フォントを同梱した
+
+v0.1.6 までは CSS の先頭で Google Fonts を `@import` していた。
+**「単一 HTML・依存ゼロ」を謳っておきながら、そこだけ外部依存だった**——
+オフラインで字が変わり、起動ごとに外部へ取りに行っていた。
+
+`fonts/` に woff2 を置き、`build.mjs` が `dist/` にコピーする。
+CSS の `@font-face` は `index.html` から見た相対パスを見るので、
+ブラウザで `app.html` を直接開いた場合も同じパスで解決する。
+
+| 入れたもの | サイズ |
+|---|---|
+| Inter（可変フォント、300〜500 を1ファイルで） latin + latin-ext | 130KB |
+| IBM Plex Mono 400 latin + latin-ext | 19KB |
+
+**和文・中文は入れていない。** Noto Sans JP だけで 4MB、TC で 5MB あり、
+app が 3MB から 12MB になる。OS のもの（Hiragino / PingFang、
+Yu Gothic UI / Microsoft JhengHei）に落とす方針。
+
+副産物：`--font-mono` の CJK フォールバックを本文と同じものに変えた。
+以前は等幅の CJK に落ちていて、日本語のラベルが汚かった。
+
+検証したのは「Chromium で `document.fonts` に `loaded` として載ること」と
+「日英どちらの表示でも崩れないこと」まで。**WKWebView と WebView2 では未検証。**
+
 ## 7. 触るときの注意
 
 ### 調整用のパラメータ（値を変えるだけ。構造は触らなくていい）

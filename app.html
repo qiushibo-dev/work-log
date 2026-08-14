@@ -5,7 +5,39 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Babos</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=IBM+Plex+Mono:wght@400&family=Noto+Sans+JP:wght@300;400;500&family=Noto+Sans+TC:wght@300;400;500&display=swap');
+/* 欧文は同梱する。以前は Google Fonts から @import していたが、
+   それだとオフラインで字が変わるうえ、起動ごとに外部へ取りに行っていた。
+   単一 HTML・依存ゼロという構成の唯一の穴だったので塞いだ。
+
+   Inter は可変フォントなので1ファイルで 300〜500 を全部持っている。
+   ファイルは fonts/ に置き、build.mjs が dist/ へコピーする。
+   ブラウザで app.html を直接開く場合も同じ相対パスで解決する。 */
+@font-face{
+  font-family:'Inter'; font-style:normal; font-weight:300 500; font-display:block;
+  src:url('fonts/Inter-latin.woff2') format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,
+    U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face{
+  font-family:'Inter'; font-style:normal; font-weight:300 500; font-display:block;
+  src:url('fonts/Inter-latin-ext.woff2') format('woff2');
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,
+    U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,
+    U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+@font-face{
+  font-family:'IBM Plex Mono'; font-style:normal; font-weight:400; font-display:block;
+  src:url('fonts/PlexMono-latin.woff2') format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,
+    U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face{
+  font-family:'IBM Plex Mono'; font-style:normal; font-weight:400; font-display:block;
+  src:url('fonts/PlexMono-latin-ext.woff2') format('woff2');
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,
+    U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,
+    U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
 
 /* Ameba — Style Reference のトークンを使用（角丸のみピル形に戻している）。
    配色は下の意味的トークンを経由させ、テーマ切替はそこだけ差し替える。 */
@@ -41,9 +73,13 @@
   --legend-from:rgba(175,180,219,.18);
   --legend-to:rgba(175,180,219,1);
 
-  --font-display:'Inter','Noto Sans JP','Noto Sans TC',ui-sans-serif,system-ui,sans-serif;
-  --font-body:'Inter','Noto Sans JP','Noto Sans TC',ui-sans-serif,system-ui,sans-serif;
-  --font-mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  /* 和文・中文は OS のものを使う（同梱すると Noto Sans JP だけで 4MB、TC で 5MB）。
+     macOS は Hiragino / PingFang、Windows は Yu Gothic UI / Microsoft JhengHei に落ちる。
+     mono の CJK も本文と同じものを指定する——等幅の和文は総じて汚いため。 */
+  --font-cjk:'Hiragino Sans','Yu Gothic UI','Noto Sans JP','PingFang TC','Microsoft JhengHei';
+  --font-display:'Inter',var(--font-cjk),ui-sans-serif,system-ui,sans-serif;
+  --font-body:'Inter',var(--font-cjk),ui-sans-serif,system-ui,sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,var(--font-cjk),monospace;
 
   --pill:100vh;
   --radius-tags:4px;
@@ -601,7 +637,7 @@ body.saver .saver-clock{opacity:.5}
    i18n — すべての表示文字列をここに集約。言語切替は applyLang() のみで完結する。
    =========================================================================== */
 /* バージョンは tauri.conf.json と2箇所で持っている。上げるときは両方直すこと。 */
-const APP_VERSION = '0.1.6';
+const APP_VERSION = '0.1.7';
 const APP_AUTHOR  = 'Shih-Bo Chiu';
 const APP_ORG     = '';
 
