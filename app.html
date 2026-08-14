@@ -137,7 +137,7 @@ input{font-family:inherit;color:inherit;background:none;border:none;outline:none
   opacity:var(--op,1);
   transition:width .5s cubic-bezier(.4,0,.2,1),height .5s cubic-bezier(.4,0,.2,1),
              opacity .3s ease,box-shadow .25s ease,transform .18s ease;
-  touch-action:none;will-change:left,top}
+  touch-action:none}
 .bub.dragging{cursor:grabbing;transform:scale(1.06);z-index:5}
 .bub:hover{transform:scale(1.05)}
 /* 円の中は横幅が限られるので、2行で打ち切って省略記号を出す */
@@ -919,7 +919,10 @@ function syncBody(id, size){
   return nb;
 }
 
+let physPaused = false;
+
 function tick(){
+  if(physPaused){ requestAnimationFrame(tick); return; }
   const { W, H } = fieldBox();
   const cx = W/2, cy = (PADB.top + (H-PADB.bottom))/2;
   const list = [...bodies.entries()];
@@ -1737,13 +1740,23 @@ function paintClock(){
 /* 【2026-08-14 撤回】Tauri の setFullscreen でメニューバーごと隠そうとしたが、
    実機（別マシン）でセーバー突入時にクラッシュ。原因未特定のため API 呼び出しは削除。
    CSS によるウィンドウ全面表示は実測済みで問題ないため、そちらのみ残す。 */
+/* 切替の瞬間はレイアウトが総入れ替えになる。その最中に毎フレーム
+   12個の位置を書き換えると WebView が耐えられない可能性があるため、
+   前後 900ms は物理の DOM 更新を止める。 */
 function enterSaver(){
   if(saverOn || !saverDelay || document.querySelector('.modal.on')) return;
-  saverOn = true; document.body.classList.add('saver'); paintClock();
+  saverOn = true;
+  physPaused = true;
+  document.body.classList.add('saver');
+  setTimeout(() => { physPaused = false; }, 900);
+  paintClock();
 }
 function exitSaver(){
   if(!saverOn) return;
-  saverOn = false; document.body.classList.remove('saver');
+  saverOn = false;
+  physPaused = true;
+  document.body.classList.remove('saver');
+  setTimeout(() => { physPaused = false; }, 900);
 }
 function resetIdle(){
   exitSaver();
