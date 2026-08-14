@@ -600,7 +600,7 @@ body.saver .saver-clock{opacity:.5}
 /* ===========================================================================
    i18n — すべての表示文字列をここに集約。言語切替は applyLang() のみで完結する。
    =========================================================================== */
-const APP_VERSION = '0.1.3';
+const APP_VERSION = '0.1.4';
 const APP_AUTHOR  = 'Shih-Bo Chiu';
 const APP_ORG     = '';
 
@@ -643,6 +643,8 @@ const STRINGS = {
     tagManagement:'Tags', about:'About',
     tagHint:'Tags you type when creating a case are added here automatically. Add one in advance, or remove one you no longer use.',
     tagAdd:'Add', phTag:'New tag…', noTags:'No tags yet.',
+    storageFailed:'File write failed — running on localStorage only',
+    storagePending:'Not written yet (change something to test)',
     version:'Version', author:'Built by', storage:'Storage',
     storageLocal:'This browser (localStorage)',
     confirmFinish: n => `Mark “${n}” as done?`,
@@ -687,6 +689,8 @@ const STRINGS = {
     tagManagement:'タグ管理', about:'このアプリについて',
     tagHint:'案件作成時に入力したタグは自動でここに追加されます。先に登録しておくことも、使わなくなったものを削除することもできます。',
     tagAdd:'追加', phTag:'新しいタグ…', noTags:'まだタグがありません。',
+    storageFailed:'ファイル書き込み失敗 — localStorage のみで動作中',
+    storagePending:'まだ書き込まれていません（何か変更すると試行されます）',
     version:'バージョン', author:'制作', storage:'保存先',
     storageLocal:'このブラウザ（localStorage）',
     confirmFinish: n => `「${n}」を完了にしますか？`,
@@ -731,6 +735,8 @@ const STRINGS = {
     tagManagement:'標籤管理', about:'關於',
     tagHint:'建立案件時輸入的標籤會自動加到這裡。你也可以先建好標籤，或把不再使用的刪掉。',
     tagAdd:'新增', phTag:'新標籤…', noTags:'還沒有標籤。',
+    storageFailed:'檔案寫入失敗 — 目前只靠 localStorage',
+    storagePending:'尚未寫入（改動任何東西就會嘗試）',
     version:'版本', author:'製作', storage:'資料儲存位置',
     storageLocal:'這個瀏覽器（localStorage）',
     confirmFinish: n => `要把「${n}」標記為完成嗎？`,
@@ -797,14 +803,45 @@ function save(){
   writeFile(json);
 }
 
+/* 保存状態。About 画面に出す。
+   以前は失敗を console.warn だけで握りつぶしていたため、
+   release ビルド（devtools 無し）では書き込みが一度も成功していないことに
+   気づけなかった。表に出す。 */
+let fileState = { ok:null, msg:'', path:'' };
+
+/* writeTextFile は親ディレクトリを作らない。
+   AppData（~/Library/Application Support/<identifier>/）は初回起動時点では
+   存在しないので、書く前に必ず作る。 */
+let _dirReady = false;
+async function ensureDir(t){
+  if(_dirReady) return;
+  const AD = t.fs.BaseDirectory.AppData;
+  try{
+    await t.fs.mkdir('', { baseDir: AD, recursive: true });
+  }catch(e){
+    // 空文字を受けつけない版があるため、絶対パスで作り直す
+    const dir = await t.path.appDataDir();
+    await t.fs.mkdir(dir, { recursive: true });
+  }
+  _dirReady = true;
+}
+
 let _wt = null;
 function writeFile(json){
-  const t = TA(); if(!t?.fs) return;
+  const t = TA();
+  if(!t?.fs){ fileState = { ok:false, msg:'browser', path:'' }; return; }
   clearTimeout(_wt);
   _wt = setTimeout(async () => {
     try{
+      await ensureDir(t);
       await t.fs.writeTextFile(DATA_FILE, json, { baseDir: t.fs.BaseDirectory.AppData });
-    }catch(e){ console.warn('[work-log] file write failed:', e); }
+      const dir = await t.path.appDataDir().catch(() => '');
+      fileState = { ok:true, msg:'', path: dir ? dir + DATA_FILE : DATA_FILE };
+    }catch(e){
+      fileState = { ok:false, msg:String(e && e.message || e), path:'' };
+      console.warn('[babos] file write failed:', e);
+    }
+    if($('modalSettings').classList.contains('on')) renderSettings();
   }, 400);
 }
 
@@ -1283,10 +1320,20 @@ function renderSettings(){
   };
   $('tagPanel').innerHTML = group('type', T.typeGroup) + group('client', T.clientGroup);
 
+  /* 保存先は「どこに書けたか」を実際の状態で出す。
+     ここが赤いままなら JSON ファイルは書けておらず、localStorage だけで動いている。 */
+  const st = fileState.ok === true
+      ? `<span style="color:var(--text)">${esc(fileState.path || DATA_FILE)}</span>`
+    : fileState.ok === false && fileState.msg === 'browser'
+      ? T.storageLocal
+    : fileState.ok === false
+      ? `<span style="color:var(--danger)">${T.storageFailed}</span><br>
+         <span style="font-size:12px;color:var(--fog)">${esc(fileState.msg)}</span>`
+      : `<span style="color:var(--fog)">${T.storagePending}</span>`;
   $('aboutPanel').innerHTML = `
     <div class="about-row"><span class="k">${T.version}</span><span class="v">${APP_VERSION}</span></div>
     <div class="about-row"><span class="k">${T.author}</span><span class="v">${esc(APP_AUTHOR)}${APP_ORG ? ' · ' + esc(APP_ORG) : ''}</span></div>
-    <div class="about-row"><span class="k">${T.storage}</span><span class="v">${T.storageLocal}</span></div>`;
+    <div class="about-row"><span class="k">${T.storage}</span><span class="v">${st}</span></div>`;
 }
 
 /* ---- language ---- */
