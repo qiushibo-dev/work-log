@@ -1739,9 +1739,25 @@ function paintClock(){
   $('saverClock').querySelector('.n').textContent = alive + (T.saverCases || '');
   setTimeout(paintClock, 20000);
 }
-/* 【2026-08-14 撤回】Tauri の setFullscreen でメニューバーごと隠そうとしたが、
-   実機（別マシン）でセーバー突入時にクラッシュ。原因未特定のため API 呼び出しは削除。
-   CSS によるウィンドウ全面表示は実測済みで問題ないため、そちらのみ残す。 */
+/* メニューバー・Dock ごと隠す本物のフルスクリーン。
+   一度クラッシュの容疑をかけたが、真因は CSS（.upper の block 化＋気泡の absolute 化）
+   の方だった。CSS を戻したうえで再導入する。
+   元々フルスクリーンだった場合は復帰時に戻さない。 */
+let wasFullscreen = false;
+
+async function setFullscreen(on){
+  const t = TA(); if(!t?.window?.getCurrentWindow) return;
+  try{
+    const w = t.window.getCurrentWindow();
+    if(on){
+      wasFullscreen = await w.isFullscreen();
+      if(!wasFullscreen) await w.setFullscreen(true);
+    }else if(!wasFullscreen){
+      await w.setFullscreen(false);
+    }
+  }catch(e){ console.warn('[work-log] fullscreen failed:', e); }
+}
+
 /* 切替の瞬間はレイアウトが総入れ替えになる。その最中に毎フレーム
    12個の位置を書き換えると WebView が耐えられない可能性があるため、
    前後 900ms は物理の DOM 更新を止める。 */
@@ -1751,12 +1767,14 @@ function enterSaver(){
   physPaused = true;
   document.body.classList.add('saver');
   setTimeout(() => { physPaused = false; }, 900);
+  setTimeout(() => { if(saverOn) setFullscreen(true); }, 300);
   paintClock();
 }
 function exitSaver(){
   if(!saverOn) return;
   saverOn = false;
   physPaused = true;
+  setFullscreen(false);                 // 戻すのは即座に（キーを押した本人が待たされないよう）
   document.body.classList.remove('saver');
   setTimeout(() => { physPaused = false; }, 900);
 }
@@ -1765,8 +1783,21 @@ function resetIdle(){
   clearTimeout(idleTimer);
   if(saverDelay) idleTimer = setTimeout(enterSaver, saverDelay);
 }
-['pointermove','pointerdown','keydown','wheel','focus'].forEach(ev =>
+['pointermove','pointerdown','keydown','wheel'].forEach(ev =>
   window.addEventListener(ev, resetIdle, { passive:true }));
+
+/* ウィンドウが前面に無いときは数えない。
+   裏に回っているアプリがセーバーに入っても意味がなく、
+   戻ってきた瞬間に画面が変わっていて驚くだけ。 */
+window.addEventListener('blur', () => {
+  clearTimeout(idleTimer); idleTimer = null;
+  exitSaver();
+});
+window.addEventListener('focus', resetIdle);
+document.addEventListener('visibilitychange', () => {
+  if(document.hidden){ clearTimeout(idleTimer); idleTimer = null; exitSaver(); }
+  else resetIdle();
+});
 
 const SAVER_MAX = 15;   // 分
 
