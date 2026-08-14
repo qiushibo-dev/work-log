@@ -600,7 +600,8 @@ body.saver .saver-clock{opacity:.5}
 /* ===========================================================================
    i18n — すべての表示文字列をここに集約。言語切替は applyLang() のみで完結する。
    =========================================================================== */
-const APP_VERSION = '0.1.5';
+/* バージョンは tauri.conf.json と2箇所で持っている。上げるときは両方直すこと。 */
+const APP_VERSION = '0.1.6';
 const APP_AUTHOR  = 'Shih-Bo Chiu';
 const APP_ORG     = '';
 
@@ -785,6 +786,7 @@ let mode = 'case';
 let lastTouched = null;
 let filter = { status:'all', client:null, type:null, q:'' };
 let sortBy = { key:'updated', dir:-1 };
+if(state.sortBy && state.sortBy.key) sortBy = state.sortBy;
 
 function load(){
   try{
@@ -826,8 +828,14 @@ async function ensureDir(t){
   _dirReady = true;
 }
 
+/* 起動直後は書かない。localStorage から起こした古い state を先に書いてしまうと、
+   まだ読み込み中の JSON ファイル（＝正）を潰す。loadFromFile() が終わるまで閉じておく。
+   別マシンから work-tracker.json を持ってきた場合に効く。 */
+let booted = false;
+
 let _wt = null;
 function writeFile(json){
+  if(!booted) return;
   const t = TA();
   if(!t?.fs){ fileState = { ok:false, msg:'browser', path:'' }; return; }
   clearTimeout(_wt);
@@ -848,17 +856,20 @@ function writeFile(json){
 
 /* 起動時：ファイルがあればそれを正とする（localStorage より確実な実体） */
 async function loadFromFile(){
-  const t = TA(); if(!t?.fs) return;
+  const t = TA();
+  if(!t?.fs){ booted = true; return; }
   try{
     const txt = await t.fs.readTextFile(DATA_FILE, { baseDir: t.fs.BaseDirectory.AppData });
     const parsed = JSON.parse(txt);
     if(parsed && Array.isArray(parsed.cases)){
       state = parsed;
       if(state.sortBy && state.sortBy.key) sortBy = state.sortBy;
-applyTheme(state.theme || 'ameba');
+      applyTheme(state.theme || 'ameba');
       applyLang(state.lang || 'en');
     }
   }catch(e){ /* 初回起動でファイルが無いのは正常 */ }
+  booted = true;
+  save();   // ゲートを開けてから、確定した state を1度だけ書き戻す
 }
 
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
