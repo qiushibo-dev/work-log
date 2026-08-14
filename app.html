@@ -1734,32 +1734,16 @@ function paintClock(){
   $('saverClock').querySelector('.n').textContent = alive + (T.saverCases || '');
   setTimeout(paintClock, 20000);
 }
-/* CSS だけでは「ウィンドウいっぱい」止まり。メニューバーと Dock まで隠すには
-   Tauri のウィンドウ API が要る。元々フルスクリーンだった場合は復帰時に戻さない。 */
-let wasFullscreen = false;
-
-async function setFullscreen(on){
-  const t = TA(); if(!t?.window?.getCurrentWindow) return;
-  try{
-    const w = t.window.getCurrentWindow();
-    if(on){
-      wasFullscreen = await w.isFullscreen();
-      if(!wasFullscreen) await w.setFullscreen(true);
-    }else if(!wasFullscreen){
-      await w.setFullscreen(false);
-    }
-  }catch(e){ /* 権限が無い環境では CSS のみで動作させる */ }
-}
-
+/* 【2026-08-14 撤回】Tauri の setFullscreen でメニューバーごと隠そうとしたが、
+   実機（別マシン）でセーバー突入時にクラッシュ。原因未特定のため API 呼び出しは削除。
+   CSS によるウィンドウ全面表示は実測済みで問題ないため、そちらのみ残す。 */
 function enterSaver(){
   if(saverOn || !saverDelay || document.querySelector('.modal.on')) return;
-  saverOn = true; document.body.classList.add('saver');
-  setFullscreen(true); paintClock();
+  saverOn = true; document.body.classList.add('saver'); paintClock();
 }
 function exitSaver(){
   if(!saverOn) return;
   saverOn = false; document.body.classList.remove('saver');
-  setFullscreen(false);
 }
 function resetIdle(){
   exitSaver();
