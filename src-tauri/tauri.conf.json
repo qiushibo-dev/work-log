@@ -5,8 +5,8 @@
   "identifier": "com.shihbo.worklog",
   "build": {
     "frontendDist": "../dist",
-    "beforeBuildCommand": "mkdir -p dist && cp app.html dist/index.html",
-    "beforeDevCommand": "mkdir -p dist && cp app.html dist/index.html"
+    "beforeBuildCommand": "node -e \"const f=require('fs');f.mkdirSync('dist',{recursive:true});f.copyFileSync('app.html','dist/index.html')\"",
+    "beforeDevCommand": "node -e \"const f=require('fs');f.mkdirSync('dist',{recursive:true});f.copyFileSync('app.html','dist/index.html')\""
   },
   "app": {
     "withGlobalTauri": true,
@@ -28,7 +28,8 @@
   "bundle": {
     "active": true,
     "targets": [
-      "dmg"
+      "dmg",
+      "nsis"
     ],
     "icon": [
       "icons/32x32.png",
