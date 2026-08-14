@@ -311,10 +311,14 @@ a.link-path:hover{color:var(--text)}
 /* 区切り線は擬似要素ではなく背景で描く。
    ::before は grid の第一子として 1 列目を占領してしまうため。
    背景なら常にコンテナの高さ＝下端まで届き、レイアウトにも影響しない。 */
-.lower{flex:1;min-height:0;overflow-y:auto;display:grid;
-  grid-template-columns:220px 1fr;align-items:start;
+/* スクロールは左右それぞれが持つ。.lower 自体は動かない。
+   以前は .lower が唯一のスクロールコンテナで、.side は position:sticky で
+   「動いていないように見せていた」だけだった——**左を送ると右も動いた**。 */
+.lower{flex:1;min-height:0;overflow:hidden;display:grid;
+  grid-template-columns:220px 1fr;
   background:linear-gradient(var(--line),var(--line)) no-repeat 220px 0 / 1px 100%}
-.side{padding:16px 0;position:sticky;top:0;align-self:start}
+/* min-height:0 が無いと grid アイテムは内容の高さを主張して overflow が効かない */
+.side{padding:16px 0;min-height:0;overflow-y:auto;overscroll-behavior:contain}
 .side-grp{padding:0 16px 18px}
 .side-grp .d-label{padding:0 8px;margin-bottom:6px}
 .side-item{display:flex;align-items:center;gap:8px;width:100%;height:32px;
@@ -325,8 +329,10 @@ a.link-path:hover{color:var(--text)}
 .side-count{margin-left:auto;font-family:var(--font-mono);font-size:11px;
   letter-spacing:.085em;color:var(--fog)}
 
-.list{display:flex;flex-direction:column}
-/* sticky の背景が .lower の区切り線（左端 1px）を塗り潰すため、そこだけ透かす */
+.list{display:flex;flex-direction:column;min-height:0;overflow-y:auto;
+  overscroll-behavior:contain}
+/* sticky は .list（自分のスクロールコンテナ）に対して効く。
+   背景が .lower の区切り線（左端 1px）を塗り潰すため、そこだけ透かす */
 .l-head{position:sticky;top:0;z-index:20;flex:none;display:grid;
   grid-template-columns:1fr 92px 108px 118px 104px 64px;gap:14px;padding:12px 20px;
   background:linear-gradient(90deg,transparent 0 1px,var(--bg) 1px);
@@ -639,7 +645,7 @@ body.saver .saver-clock{opacity:.5}
    i18n — すべての表示文字列をここに集約。言語切替は applyLang() のみで完結する。
    =========================================================================== */
 /* バージョンは tauri.conf.json と2箇所で持っている。上げるときは両方直すこと。 */
-const APP_VERSION = '0.1.8';
+const APP_VERSION = '0.1.9';
 const APP_AUTHOR  = 'Shih-Bo Chiu';
 const APP_ORG     = '';
 

@@ -247,10 +247,26 @@ Mac 上で Windows 版は作れない（MSVC ツールチェーンが要る）�
    **ここを shell に戻さないこと。**
 2. **`bundle.targets` を `"all"` にしない。** `["dmg","nsis"]` と明示する。
    対象外のプラットフォームでは自動的に無視されるので、同じ設定を両方で使える
-3. **macOS の codesign は間欠的に落ちる。**
-   `resource fork, Finder information, or similar detritus not allowed`。
-   同じ設定で2回走らせて1回目だけ落ちた。**設定の問題ではない。踏んだら retry。**
-   （一度これを targets の問題と誤診してコミットメッセージに書いた。訂正済み）
+3. **macOS の codesign が落ちる問題 → 原因判明（v0.1.9）。retry で誤魔化さないこと。**
+
+   ```
+   resource fork, Finder information, or similar detritus not allowed
+   ```
+
+   **原因は iCloud。** このプロジェクトは `~/Desktop` にあり、Desktop は
+   File Provider の管理下にある（`xattr ~/Desktop` に
+   `com.apple.file-provider-domain-id` が出る）。ビルド生成物をそのまま
+   Desktop 配下に置くと、出来たばかりの `.app` に File Provider が
+   `com.apple.FinderInfo` を付けにくる。codesign はそれを明確に拒否する。
+
+   **同期が `.app` に触る前に署名が終われば成功する**ので、
+   一見ランダムに落ちているように見える。3回踏んで、
+   2回は「間欠的な問題だから retry」で済ませてしまった（誤診）。
+
+   **対策：`./build.sh` を使う。** `CARGO_TARGET_DIR` を
+   `~/.cache/babos-target` に逃がすだけ。iCloud の外なら一切起きない。
+   `npx tauri build` を直接叩くと再発する。
+   CI には iCloud が無いので、あちらは何もしなくてよい。
 
 Actions の無料枠は private リポジトリで月 2000 分。**macOS runner は 10倍、
 Windows は 2倍で消費する**ので、1回の両対応ビルドで 60〜90 分ぶん減る。連打しないこと。
@@ -306,6 +322,31 @@ Google Fonts の CSS API は `unicode-range` で切った断片を返す。そ�
 「日英どちらの表示でも崩れないこと」まで。**WKWebView と WebView2 では未検証。**
 なお幅の実測で Noto と Hiragino を判別しようとしたが、
 **和文は全角等幅なので幅では区別できない**。断片の読み込み状態を見るのが確実。
+
+## 6-c. v0.1.9 — 左右のスクロールを分けた
+
+**症状**：左のタグ一覧を送ると、右の案件一覧も一緒に動く。
+
+**原因**：`.lower` が**唯一のスクロールコンテナ**で、`.side` は
+`position:sticky` で「動いていないように見せていた」だけだった。
+実際にスクロールしていたのは常に `.lower` 全体なので、
+左を送る＝下半分ぜんぶを送る、になっていた。
+
+**修正**：スクロールを左右それぞれに持たせた。
+
+```css
+.lower{overflow:hidden}                    /* 親は動かない。align-items:start も外す */
+.side{min-height:0; overflow-y:auto}       /* 左が自分でスクロール */
+.list{min-height:0; overflow-y:auto}       /* 右が自分でスクロール */
+```
+
+- **`min-height:0` が要る。** grid アイテムは既定で内容分の高さを主張するため、
+  これが無いと `overflow-y:auto` が効かない
+- `.l-head` の `position:sticky` は `.list`（新しいスクロールコンテナ）に対して
+  効くので、そのままで動く。実測でズレ 0px
+- 区切り線は `.lower` の背景で描いているので、`.lower` が動かなくなったぶん
+  むしろ安定した（内容と一緒にスクロールしない）
+- `overscroll-behavior:contain` を両方に入れ、端まで送っても親に伝播させない
 
 ## 7. 触るときの注意
 

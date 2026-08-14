@@ -34,9 +34,14 @@ macOS ／ Windows 桌面 app（Tauri 打包）。目前 v0.1.7。
 open app.html
 
 # 打包成 dmg
-npx --yes @tauri-apps/cli@^2 build
-# → src-tauri/target/release/bundle/dmg/Babos_0.1.7_aarch64.dmg
+./build.sh
+# → ~/.cache/babos-target/release/bundle/dmg/Babos_0.1.9_aarch64.dmg
 ```
+
+**不要直接跑 `npx tauri build`。** 這個專案在 `~/Desktop`，而桌面在 iCloud 的
+File Provider 管理下——build 出來的 `.app` 會被同步機制加上 `com.apple.FinderInfo`，
+codesign 直接拒絕簽章。`build.sh` 只做一件事：把 `CARGO_TARGET_DIR` 移到
+`~/.cache/babos-target`，離開 iCloud 的範圍。詳見 HANDOFF.md 第 7 節第 3 點。
 
 沒有 `package.json`。`beforeBuildCommand` 執行 `build.mjs`，把 `app.html` 複製成
 `dist/index.html`、把 `fonts/` 複製進 `dist/`。所以**編輯的對象永遠是根目錄的 `app.html`**，
