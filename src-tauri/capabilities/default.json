@@ -10,6 +10,8 @@
     "dialog:default",
     "fs:allow-appdata-read-recursive",
     "fs:allow-appdata-write-recursive",
-    "fs:allow-appdata-meta-recursive"
+    "fs:allow-appdata-meta-recursive",
+    "core:window:allow-set-fullscreen",
+    "core:window:allow-is-fullscreen"
   ]
 }

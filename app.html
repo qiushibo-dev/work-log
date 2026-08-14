@@ -436,9 +436,11 @@ button.stage:hover{border-color:var(--accent-hi);color:var(--accent-hi)}
    画面が広がると気泡が自然に散らばっていく。 */
 body.saver .topbar,body.saver .detail,body.saver .lower{
   opacity:0;pointer-events:none;transition:opacity .9s ease}
+/* grid のままだと .detail が 2 行目を占め、気泡が上半分しか使えない。
+   block に切り替えて気泡を絶対配置で全面に広げる。 */
 body.saver .upper{position:fixed;inset:0;height:100vh;z-index:200;
-  border:0;grid-template-columns:1fr;transition:none}
-body.saver .bubbles{border:0}
+  border:0;display:block;transition:none}
+body.saver .bubbles{position:absolute;inset:0;width:100%;height:100%;border:0}
 body.saver .bubbles-head,body.saver .legend{opacity:0;transition:opacity .9s ease}
 body.saver .bub{cursor:default}
 .topbar,.detail,.lower,.bubbles-head,.legend{transition:opacity .5s ease}
@@ -1732,13 +1734,32 @@ function paintClock(){
   $('saverClock').querySelector('.n').textContent = alive + (T.saverCases || '');
   setTimeout(paintClock, 20000);
 }
+/* CSS だけでは「ウィンドウいっぱい」止まり。メニューバーと Dock まで隠すには
+   Tauri のウィンドウ API が要る。元々フルスクリーンだった場合は復帰時に戻さない。 */
+let wasFullscreen = false;
+
+async function setFullscreen(on){
+  const t = TA(); if(!t?.window?.getCurrentWindow) return;
+  try{
+    const w = t.window.getCurrentWindow();
+    if(on){
+      wasFullscreen = await w.isFullscreen();
+      if(!wasFullscreen) await w.setFullscreen(true);
+    }else if(!wasFullscreen){
+      await w.setFullscreen(false);
+    }
+  }catch(e){ /* 権限が無い環境では CSS のみで動作させる */ }
+}
+
 function enterSaver(){
   if(saverOn || !saverDelay || document.querySelector('.modal.on')) return;
-  saverOn = true; document.body.classList.add('saver'); paintClock();
+  saverOn = true; document.body.classList.add('saver');
+  setFullscreen(true); paintClock();
 }
 function exitSaver(){
   if(!saverOn) return;
   saverOn = false; document.body.classList.remove('saver');
+  setFullscreen(false);
 }
 function resetIdle(){
   exitSaver();
