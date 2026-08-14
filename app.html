@@ -600,7 +600,7 @@ body.saver .saver-clock{opacity:.5}
 /* ===========================================================================
    i18n — すべての表示文字列をここに集約。言語切替は applyLang() のみで完結する。
    =========================================================================== */
-const APP_VERSION = '0.1.4';
+const APP_VERSION = '0.1.5';
 const APP_AUTHOR  = 'Shih-Bo Chiu';
 const APP_ORG     = '';
 
@@ -836,7 +836,8 @@ function writeFile(json){
       await ensureDir(t);
       await t.fs.writeTextFile(DATA_FILE, json, { baseDir: t.fs.BaseDirectory.AppData });
       const dir = await t.path.appDataDir().catch(() => '');
-      fileState = { ok:true, msg:'', path: dir ? dir + DATA_FILE : DATA_FILE };
+      const sep = dir && !dir.endsWith('/') ? '/' : '';
+      fileState = { ok:true, msg:'', path: dir ? dir + sep + DATA_FILE : DATA_FILE };
     }catch(e){
       fileState = { ok:false, msg:String(e && e.message || e), path:'' };
       console.warn('[babos] file write failed:', e);
