@@ -120,15 +120,25 @@ localStorage（key: `work-tracker-v1`）同時保留一份當保險，但**JSON 
 
 ### 字體
 
-歐文（Inter、IBM Plex Mono）**同捆在 `fonts/`**，走 `@font-face` 的相對路徑。
-Inter 是可變字體，一個檔涵蓋 300–500 全部字重。
+**全部同捆，不連網。** `fonts/` 底下共 233 個 woff2，9.8MB。
 
-**和文與中文用系統字體**——macOS 落在 Hiragino Sans／PingFang TC，Windows 落在
-Yu Gothic UI／Microsoft JhengHei。不同捆的理由是大小：Noto Sans JP 單獨就 4MB，
-TC 再 5MB，會讓 app 從 3MB 變成 12MB。要完全一致的話就得付這個代價。
+| 字體 | 檔案 | 用途 |
+|---|---|---|
+| Inter（可變，300–500） | 2 片 | 歐文本文與標題 |
+| IBM Plex Mono 400 | 2 片 | `.meta` 的小標籤與數字 |
+| Noto Sans JP（可變） | 124 片 | 和文 |
+| Noto Sans TC（可變） | 105 片 | 中文 |
 
-> v0.1.7 之前是用 `@import` 從 Google Fonts 抓的。那是這份「單一檔案、零依賴」
-> 架構裡唯一的網路依賴——離線時字會變，而且每次啟動都往外連。
+歐文的 4 個 `@font-face` 直接寫在 `app.html` 裡；中日文的 917 行放在
+`fonts/noto.css`，由 `<link>` 載入——塞進 app.html 會讓那個檔沒法讀。
+**`fonts/noto.css` 是產生出來的，不要手改**，做法寫在 HANDOFF.md 第 6-b 節。
+
+Noto 的片段用 `unicode-range` 切開，所以執行時只會載入畫面上真正出現的字所屬的片段
+（實測日文介面約 13 片），不是一次吃掉 9.8MB。
+
+> v0.1.7 之前是用 `@import` 從 Google Fonts 抓的。那是這份「零依賴」架構裡唯一的
+> 網路依賴——離線時字會變，而且每次啟動都往外連。代價是 dmg 從 3.4MB 變成 12MB，
+> 這是製作者明確選的：視覺一致優先。
 
 ### `app.html` 裡的區塊順序
 

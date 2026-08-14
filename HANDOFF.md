@@ -255,30 +255,57 @@ Mac 上で Windows 版は作れない（MSVC ツールチェーンが要る）�
 Actions の無料枠は private リポジトリで月 2000 分。**macOS runner は 10倍、
 Windows は 2倍で消費する**ので、1回の両対応ビルドで 60〜90 分ぶん減る。連打しないこと。
 
-### 欧文フォントを同梱した
+### フォントを全部同梱した（v0.1.8）
 
 v0.1.6 までは CSS の先頭で Google Fonts を `@import` していた。
 **「単一 HTML・依存ゼロ」を謳っておきながら、そこだけ外部依存だった**——
 オフラインで字が変わり、起動ごとに外部へ取りに行っていた。
 
-`fonts/` に woff2 を置き、`build.mjs` が `dist/` にコピーする。
-CSS の `@font-face` は `index.html` から見た相対パスを見るので、
-ブラウザで `app.html` を直接開いた場合も同じパスで解決する。
+`fonts/` に woff2 を置き、`build.mjs` が `dist/` にコピーする。パスは
+`index.html` から見た相対で解決するので、ブラウザで `app.html` を直接開いても動く。
 
-| 入れたもの | サイズ |
-|---|---|
-| Inter（可変フォント、300〜500 を1ファイルで） latin + latin-ext | 130KB |
-| IBM Plex Mono 400 latin + latin-ext | 19KB |
+| 入れたもの | 断片数 | サイズ |
+|---|---|---|
+| Inter（可変、300〜500 を1ファイルで） | 2 | 130KB |
+| IBM Plex Mono 400 | 2 | 19KB |
+| Noto Sans JP（可変） | 124 | 約 5MB |
+| Noto Sans TC（可変） | 105 | 約 4.6MB |
 
-**和文・中文は入れていない。** Noto Sans JP だけで 4MB、TC で 5MB あり、
-app が 3MB から 12MB になる。OS のもの（Hiragino / PingFang、
-Yu Gothic UI / Microsoft JhengHei）に落とす方針。
+**dmg は 3.4MB → 12MB になった。** 制作者が視覺の一致を優先して明確に選んだ結果。
+一度「和文・中文は OS のものに落とす」案で作ったが、
+**Hiragino に変わるのは受け入れられないという判断**だった（macOS に Noto Sans JP は
+入っていないので、同梱しないなら必ず Hiragino になる）。
 
-副産物：`--font-mono` の CJK フォールバックを本文と同じものに変えた。
-以前は等幅の CJK に落ちていて、日本語のラベルが汚かった。
+#### `fonts/noto.css` の作り方（手で編集しないこと）
 
-検証したのは「Chromium で `document.fonts` に `loaded` として載ること」と
+Google Fonts の CSS API は `unicode-range` で切った断片を返す。その断片を
+全部落として、`src` をローカルパスに書き換えたものが `fonts/noto.css`。
+
+```
+1. curl で css2 API を叩く（User-Agent に Chrome を指定しないと woff2 が返らない）
+   https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300..500&display=block
+2. @font-face ブロックごとに url と unicode-range を取り出す
+3. woff2 を fonts/noto-jp-NNN.woff2 として保存（先頭 4バイトが wOF2 か検証する）
+4. src だけローカルパスに差し替えて書き出す
+```
+
+`fonts/noto.css` は `fonts/` の中にあるので、**`src` のパスは同階層を指す**
+（`url('noto-jp-000.woff2')`）。欧文の `@font-face` は app.html 内にあるので
+そちらは `url('fonts/Inter-latin.woff2')`。**基準が違うので混ぜないこと。**
+
+#### 見落としやすい点
+
+- `--font-cjk` の並び順で **Noto を OS フォントより前に置く**。
+  同梱しても後ろに置いたままだと Hiragino が勝ってしまう（一度これで踏んだ）
+- 断片は `unicode-range` で遅延読み込みされる。実測で日本語表示時に読まれたのは
+  233 面のうち 13 面だけ。**9.8MB を毎回読むわけではない**
+- 副産物：`--font-mono` の CJK フォールバックを本文と同じものに変えた。
+  以前は等幅の CJK に落ちていて、日本語のラベルが汚かった
+
+検証したのは「Chromium で Noto の断片が `loaded` になること」と
 「日英どちらの表示でも崩れないこと」まで。**WKWebView と WebView2 では未検証。**
+なお幅の実測で Noto と Hiragino を判別しようとしたが、
+**和文は全角等幅なので幅では区別できない**。断片の読み込み状態を見るのが確実。
 
 ## 7. 触るときの注意
 

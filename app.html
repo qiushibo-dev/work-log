@@ -4,10 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Babos</title>
+<!-- 和文・中文（Noto Sans JP / TC）。229 断片・917 行あるので別ファイルにしてある。
+     欧文は下の <style> 内で直接 @font-face している（4ファイルだけなので）。 -->
+<link rel="stylesheet" href="fonts/noto.css">
 <style>
-/* 欧文は同梱する。以前は Google Fonts から @import していたが、
-   それだとオフラインで字が変わるうえ、起動ごとに外部へ取りに行っていた。
-   単一 HTML・依存ゼロという構成の唯一の穴だったので塞いだ。
+/* 欧文も同梱する。以前は Google Fonts から @import していたが、
+   オフラインで字が変わるうえ、起動ごとに外部へ取りに行っていた。
 
    Inter は可変フォントなので1ファイルで 300〜500 を全部持っている。
    ファイルは fonts/ に置き、build.mjs が dist/ へコピーする。
@@ -73,10 +75,10 @@
   --legend-from:rgba(175,180,219,.18);
   --legend-to:rgba(175,180,219,1);
 
-  /* 和文・中文は OS のものを使う（同梱すると Noto Sans JP だけで 4MB、TC で 5MB）。
-     macOS は Hiragino / PingFang、Windows は Yu Gothic UI / Microsoft JhengHei に落ちる。
+  /* 和文・中文も同梱した Noto を最優先にする。OS のフォントは、
+     同梱に無い字（Noto の断片が漢字を取りこぼした場合）の受け皿として後ろに置く。
      mono の CJK も本文と同じものを指定する——等幅の和文は総じて汚いため。 */
-  --font-cjk:'Hiragino Sans','Yu Gothic UI','Noto Sans JP','PingFang TC','Microsoft JhengHei';
+  --font-cjk:'Noto Sans JP','Noto Sans TC','Hiragino Sans','Yu Gothic UI','PingFang TC','Microsoft JhengHei';
   --font-display:'Inter',var(--font-cjk),ui-sans-serif,system-ui,sans-serif;
   --font-body:'Inter',var(--font-cjk),ui-sans-serif,system-ui,sans-serif;
   --font-mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,var(--font-cjk),monospace;
@@ -637,7 +639,7 @@ body.saver .saver-clock{opacity:.5}
    i18n — すべての表示文字列をここに集約。言語切替は applyLang() のみで完結する。
    =========================================================================== */
 /* バージョンは tauri.conf.json と2箇所で持っている。上げるときは両方直すこと。 */
-const APP_VERSION = '0.1.7';
+const APP_VERSION = '0.1.8';
 const APP_AUTHOR  = 'Shih-Bo Chiu';
 const APP_ORG     = '';
 
