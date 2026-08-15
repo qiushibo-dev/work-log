@@ -307,6 +307,18 @@ a.link-path:hover{color:var(--text)}
   border-radius:var(--pill);font-size:13px;color:var(--mist);transition:.12s}
 .ac-item:hover,.ac-item.on{background:var(--sel-bg);color:var(--text)}
 
+/* 更新確認。About の版本行に並べる */
+.ver-check{font-family:var(--font-mono);font-size:10px;letter-spacing:.085em;
+  color:var(--fog);border:1px solid var(--line);border-radius:var(--pill);
+  padding:2px 10px;margin-left:10px;transition:.15s;text-transform:uppercase}
+.ver-check:hover{border-color:var(--accent-hi);color:var(--accent-hi)}
+.ver-result{margin-left:10px;font-size:12px}
+.ver-ok{color:var(--fog)}
+.ver-new{color:var(--accent-hi)}
+.ver-fail{color:var(--danger)}
+.ver-url{display:block;margin-top:3px;font-family:var(--font-mono);font-size:10.5px;
+  color:var(--fog);user-select:text}
+
 /* ---- lower ---- */
 /* 区切り線は擬似要素ではなく背景で描く。
    ::before は grid の第一子として 1 列目を占領してしまうため。
@@ -645,7 +657,7 @@ body.saver .saver-clock{opacity:.5}
    i18n — すべての表示文字列をここに集約。言語切替は applyLang() のみで完結する。
    =========================================================================== */
 /* バージョンは tauri.conf.json と2箇所で持っている。上げるときは両方直すこと。 */
-const APP_VERSION = '0.1.9';
+const APP_VERSION = '0.2.0';
 const APP_AUTHOR  = 'Shih-Bo Chiu';
 const APP_ORG     = '';
 
@@ -692,6 +704,8 @@ const STRINGS = {
     storagePending:'Not written yet (change something to test)',
     version:'Version', author:'Built by', storage:'Storage',
     storageLocal:'This browser (localStorage)',
+    checkUpdate:'Check', verChecking:'Checking…', verLatest:'Up to date',
+    verNew: v => `${v} is available`, verFailed:'Could not check',
     confirmFinish: n => `Mark “${n}” as done?`,
     confirmDelete: n => `Delete “${n}”? This cannot be undone.`,
     confirmTagDelete: (t,n) => `“${t}” is used by ${n} case${n===1?'':'s'}. Remove the tag and clear it from those cases?`,
@@ -738,6 +752,8 @@ const STRINGS = {
     storagePending:'まだ書き込まれていません（何か変更すると試行されます）',
     version:'バージョン', author:'制作', storage:'保存先',
     storageLocal:'このブラウザ（localStorage）',
+    checkUpdate:'確認', verChecking:'確認中…', verLatest:'最新です',
+    verNew: v => `${v} が出ています`, verFailed:'確認できませんでした',
     confirmFinish: n => `「${n}」を完了にしますか？`,
     confirmDelete: n => `「${n}」を削除しますか？　元に戻せません。`,
     confirmTagDelete: (t,n) => `「${t}」は${n}件の案件で使われています。タグを削除して、それらの案件からも外しますか？`,
@@ -784,6 +800,8 @@ const STRINGS = {
     storagePending:'尚未寫入（改動任何東西就會嘗試）',
     version:'版本', author:'製作', storage:'資料儲存位置',
     storageLocal:'這個瀏覽器（localStorage）',
+    checkUpdate:'檢查', verChecking:'檢查中…', verLatest:'已是最新',
+    verNew: v => `有新版 ${v}`, verFailed:'無法檢查',
     confirmFinish: n => `要把「${n}」標記為完成嗎？`,
     confirmDelete: n => `要刪除「${n}」嗎？　這個動作無法復原。`,
     confirmTagDelete: (t,n) => `「${t}」目前有 ${n} 個案件在使用。要刪除這個標籤，並從那些案件上移除嗎？`,
@@ -1387,9 +1405,55 @@ function renderSettings(){
          <span style="font-size:12px;color:var(--fog)">${esc(fileState.msg)}</span>`
       : `<span style="color:var(--fog)">${T.storagePending}</span>`;
   $('aboutPanel').innerHTML = `
-    <div class="about-row"><span class="k">${T.version}</span><span class="v">${APP_VERSION}</span></div>
+    <div class="about-row"><span class="k">${T.version}</span><span class="v">
+      ${APP_VERSION}
+      <button class="ver-check" id="verCheck">${T.checkUpdate}</button>
+      <span class="ver-result" id="verResult">${updateState.text}</span>
+    </span></div>
     <div class="about-row"><span class="k">${T.author}</span><span class="v">${esc(APP_AUTHOR)}${APP_ORG ? ' · ' + esc(APP_ORG) : ''}</span></div>
     <div class="about-row"><span class="k">${T.storage}</span><span class="v">${st}</span></div>`;
+}
+
+/* ---- 更新確認 ----
+   repo を public にしたので、GitHub の API は認証なしで叩ける。
+   Releases の最新タグと APP_VERSION を比べるだけ。
+   ダウンロードは自分で取りに行ってもらう——アプリ内で落として
+   入れ替えるには署名まわりの仕組みが要るし、そこまでは求めていない。 */
+const RELEASES_URL = 'https://github.com/qiushibo-dev/work-log/releases';
+const LATEST_API   = 'https://api.github.com/repos/qiushibo-dev/work-log/releases/latest';
+
+let updateState = { text: '' };
+
+/* "v0.1.9" → [0,1,9]。数字以外は捨てる */
+const verParts = s => String(s).replace(/^v/, '').split('.').map(n => parseInt(n, 10) || 0);
+
+function verNewer(a, b){
+  const x = verParts(a), y = verParts(b);
+  for(let i = 0; i < Math.max(x.length, y.length); i++){
+    const d = (x[i] || 0) - (y[i] || 0);
+    if(d) return d > 0;
+  }
+  return false;
+}
+
+async function checkUpdate(){
+  updateState = { text: T.verChecking };
+  renderSettings();
+  try{
+    const r = await fetch(LATEST_API, { headers: { Accept: 'application/vnd.github+json' } });
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    const latest = (await r.json()).tag_name;
+
+    updateState = verNewer(latest, APP_VERSION)
+      ? { text: `<span class="ver-new">${T.verNew(latest)}</span>
+                 <span class="ver-url">${RELEASES_URL}</span>` }
+      : { text: `<span class="ver-ok">${T.verLatest}</span>` };
+  }catch(e){
+    /* 失敗を黙って飲まない。オフラインなのか API が落ちているのか出す */
+    updateState = { text: `<span class="ver-fail">${T.verFailed}</span>
+                           <span class="ver-url">${esc(String(e.message || e))}</span>` };
+  }
+  renderSettings();
 }
 
 /* ---- language ---- */
@@ -1588,6 +1652,8 @@ document.addEventListener('click', async e => {
   const t = e.target;
 
   if(t.closest('#settingsBtn')){ renderSettings(); $('modalSettings').classList.add('on'); return; }
+
+  if(t.closest('#verCheck')){ checkUpdate(); return; }
 
   const seg = t.closest('#langSeg .seg');
   if(seg){ applyLang(seg.dataset.lang); renderSettings(); return; }
