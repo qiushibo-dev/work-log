@@ -160,7 +160,27 @@ input{font-family:inherit;color:inherit;background:none;border:none;outline:none
 .bubbles{position:relative;overflow:hidden;border-right:1px solid var(--line);
   background:var(--field)}
 .bubbles-head{position:absolute;top:16px;left:20px;right:20px;display:flex;
-  gap:8px;flex-wrap:wrap;z-index:10}
+  gap:10px;align-items:center;z-index:10}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+
+/* 一巡の進み具合。10 個ずつ二段、左詰め。
+   **空き枠は描かない。** ゲームの HP と同じで、点いたぶんだけ伸びていく。
+   高さを 22px に固定してあるのは、一段目の位置を動かさないため——
+   二段目が現れた瞬間に一段目が上へずれると、増えたことより揺れたことが目に付く。 */
+/* 外側は右端まで伸ばして、中身だけ右に寄せる。
+   **内側の幅を 10 個ぶんで固定するのが要点。**
+   これが無いと二段目が右揃えになり、
+   一段目の右端の下から左へ伸びるという妙な並びになる。 */
+.cycle{flex:1;min-width:0;display:flex;justify-content:flex-end;align-items:center}
+/* 幅と高さは JS が入れる。一段に何個入るかは窓の広さで変わる */
+.cycle-inner{display:flex;flex-direction:column;gap:6px;
+  align-items:flex-end;justify-content:flex-start}
+/* 右端から左へ点いていく。右寄せなのに左から埋まると、
+   増えるたびに列が右へ伸びていくように見えて落ち着かない。 */
+.cycle-row{display:flex;flex-direction:row-reverse;gap:10px}
+.cyc{width:8px;height:8px;border-radius:50%;flex-shrink:0;
+  background:var(--mist);animation:cycIn .28s ease}
+@keyframes cycIn{from{transform:scale(.2);opacity:0}to{transform:scale(1);opacity:1}}
 .chip{height:26px;padding:0 13px;border-radius:var(--pill);
   border:1px solid var(--line);display:grid;place-items:center;
   font-family:var(--font-mono);font-size:11px;letter-spacing:.085em;
@@ -184,12 +204,16 @@ input{font-family:inherit;color:inherit;background:none;border:none;outline:none
 .bub.match{box-shadow:0 0 22px 5px var(--glow-match)}
 .bub.sel{box-shadow:0 0 34px 9px var(--glow-sel)}
 .bub.dim{opacity:0 !important;pointer-events:none}
-.bub.leaving{animation:float-away 2.1s cubic-bezier(.3,0,.6,1) forwards;
-  pointer-events:none;transition:none}
+/* 完了した気泡はランプの位置へ飛んでいって、そのまま点になる。
+   行き先は毎回変わる（次に点く場所）ので、距離は JS から --fx/--fy で渡す。
+   **時間は FLY_MS と揃えること。** ずれると点が先に現れるか、
+   気泡が消えたあとに間が空く。 */
+.bub.leaving{animation:float-away 1.4s cubic-bezier(.4,0,.55,1) forwards;
+  pointer-events:none;transition:none;z-index:20}
 @keyframes float-away{
-  0%{transform:translateY(0) scale(1);opacity:var(--op)}
-  22%{transform:translateY(-14px) scale(1.14);opacity:1}
-  100%{transform:translateY(-340px) scale(.5);opacity:0}
+  0%  {transform:translate(0,0) scale(1);opacity:var(--op)}
+  18% {transform:translate(calc(var(--fx) * .06), calc(var(--fy) * .06 - 16px)) scale(1.14);opacity:1}
+  100%{transform:translate(var(--fx), var(--fy)) scale(var(--fs));opacity:.9}
 }
 .legend{position:absolute;bottom:16px;left:20px;right:20px;display:flex;align-items:center;
   gap:10px;z-index:10;pointer-events:none}
@@ -533,7 +557,10 @@ body.saver .saver-clock{opacity:.5}
 
   <div class="upper">
     <div class="bubbles" id="bubbles">
-      <div class="bubbles-head" id="chips"></div>
+      <div class="bubbles-head">
+        <div class="chips" id="chips"></div>
+        <div class="cycle" id="cycle"></div>
+      </div>
       <div class="legend">
         <span class="meta" data-t="legendStart"></span>
         <div class="legend-bar"></div>
@@ -657,7 +684,7 @@ body.saver .saver-clock{opacity:.5}
    i18n — すべての表示文字列をここに集約。言語切替は applyLang() のみで完結する。
    =========================================================================== */
 /* バージョンは tauri.conf.json と2箇所で持っている。上げるときは両方直すこと。 */
-const APP_VERSION = '0.2.0';
+const APP_VERSION = '0.3.0';
 const APP_AUTHOR  = 'Shih-Bo Chiu';
 const APP_ORG     = '';
 
@@ -707,6 +734,10 @@ const STRINGS = {
     checkUpdate:'Check', verChecking:'Checking…', verLatest:'Up to date',
     verNew: v => `${v} is available`, verFailed:'Could not check',
     confirmFinish: n => `Mark “${n}” as done?`,
+    cycleFull: n => `${n} cases finished. Export a report for this round?`,
+    reportTitle:'Work report', reportRange:'Period', reportCases:'Cases',
+    reportNoLogs:'No entries.', reportSaved: p => `Report saved to:\n${p}`,
+    reportFailed:'Could not save the report.',
     confirmDelete: n => `Delete “${n}”? This cannot be undone.`,
     confirmTagDelete: (t,n) => `“${t}” is used by ${n} case${n===1?'':'s'}. Remove the tag and clear it from those cases?`,
   },
@@ -755,6 +786,10 @@ const STRINGS = {
     checkUpdate:'確認', verChecking:'確認中…', verLatest:'最新です',
     verNew: v => `${v} が出ています`, verFailed:'確認できませんでした',
     confirmFinish: n => `「${n}」を完了にしますか？`,
+    cycleFull: n => `${n} 件が完了しました。この一巡のレポートを書き出しますか？`,
+    reportTitle:'作業レポート', reportRange:'期間', reportCases:'案件',
+    reportNoLogs:'ログなし。', reportSaved: p => `レポートを保存しました：\n${p}`,
+    reportFailed:'レポートを保存できませんでした。',
     confirmDelete: n => `「${n}」を削除しますか？　元に戻せません。`,
     confirmTagDelete: (t,n) => `「${t}」は${n}件の案件で使われています。タグを削除して、それらの案件からも外しますか？`,
   },
@@ -803,6 +838,10 @@ const STRINGS = {
     checkUpdate:'檢查', verChecking:'檢查中…', verLatest:'已是最新',
     verNew: v => `有新版 ${v}`, verFailed:'無法檢查',
     confirmFinish: n => `要把「${n}」標記為完成嗎？`,
+    cycleFull: n => `已經完成 ${n} 件。要輸出這一輪的報告嗎？`,
+    reportTitle:'工作報告', reportRange:'期間', reportCases:'案件',
+    reportNoLogs:'沒有紀錄。', reportSaved: p => `報告已儲存至：\n${p}`,
+    reportFailed:'報告儲存失敗。',
     confirmDelete: n => `要刪除「${n}」嗎？　這個動作無法復原。`,
     confirmTagDelete: (t,n) => `「${t}」目前有 ${n} 個案件在使用。要刪除這個標籤，並從那些案件上移除嗎？`,
   },
@@ -1107,6 +1146,157 @@ function attachDrag(el, id){
 /* ---- rendering ---- */
 const $ = id => document.getElementById(id);
 
+/* ---- 一巡（サイクル）----
+   完了した案件を 20 件ためると一区切り。満了時にレポートを出せる。
+
+   **満了したサイクルは state.cycles に残す。** カウンタを 0 に戻すだけだと、
+   その場で書き出さなかった瞬間に「どの 20 件だったか」が永久に分からなくなる。
+   ユーザーは「書き出さなくてもリセットでいい」と言ったが、
+   それは書き出す機会が一度きりでいいという意味ではない。 */
+const CYCLE_SIZE = 20;
+
+/* 一段に何個並べるか。**20 か 10 の二択にする。**
+   入るだけ詰める（15＋5 など）と段の長さが揃わず、
+   窓を動かすたびに割り方が変わって数えにくい。
+   20 個ぶんの幅が取れるなら一段、無理なら二段。 */
+function perRow(){
+  const w = $('cycle').getBoundingClientRect().width;
+  const need = CYCLE_SIZE * DOT + (CYCLE_SIZE - 1) * DOT_GAP;
+  return w >= need ? CYCLE_SIZE : CYCLE_SIZE / 2;
+}
+
+let _per = 0;   // 直近の割り方。窓の変化で描き直すかの判断に使う
+
+function renderCycle(){
+  const per  = perRow();
+  const segs = CYCLE_SIZE / per;
+  const on   = Math.min(state.cycle?.caseIds?.length || 0, CYCLE_SIZE);
+  _per = per;
+
+  const rows = [];
+  for(let r = 0; r < segs; r++){
+    const n = Math.max(0, Math.min(per, on - r * per));
+    if(!n) continue;                      // 空の段は要素ごと出さない
+    rows.push(`<div class="cycle-row">${'<i class="cyc"></i>'.repeat(n)}</div>`);
+  }
+  // 中身が空でも枠は出す。飛び先の座標をここから取るため
+  const w = per * DOT + (per - 1) * DOT_GAP;
+  const h = segs * DOT + (segs - 1) * DOT_VGAP;
+  $('cycle').innerHTML =
+    `<div class="cycle-inner" style="width:${w}px;height:${h}px">${rows.join('')}</div>`;
+}
+
+/* 窓の大きさが変わっても、割り方が変わらないなら触らない。
+   毎回描き直すと点が全部登場アニメをやり直して騒がしい。 */
+window.addEventListener('resize', () => {
+  if(perRow() !== _per) renderCycle();
+});
+
+function cycleAdd(id){
+  if(!state.cycle) state.cycle = { start: new Date().toISOString(), caseIds: [] };
+  if(state.cycle.caseIds.includes(id)) return false;
+  state.cycle.caseIds.push(id);
+  return state.cycle.caseIds.length >= CYCLE_SIZE;
+}
+
+/* 完了を取り消したら消灯し、この一巡からも外す。
+   残したままだと点の数と実際の完了数が合わなくなる。 */
+function cycleRemove(id){
+  if(!state.cycle) return;
+  const i = state.cycle.caseIds.indexOf(id);
+  if(i >= 0) state.cycle.caseIds.splice(i, 1);
+}
+
+/* 先に封をしてから訊く。順番を逆にすると、ダイアログを閉じ損ねただけで
+   その一巡が消える。 */
+async function cycleComplete(){
+  const sealed = {
+    id: uid(),
+    start: state.cycle.start,
+    end: new Date().toISOString(),
+    caseIds: state.cycle.caseIds.slice()
+  };
+  state.cycles = state.cycles || [];
+  state.cycles.push(sealed);
+  state.cycle = { start: new Date().toISOString(), caseIds: [] };
+  save(); renderAll();
+
+  if(await ask(T.cycleFull(CYCLE_SIZE))) await exportReport(sealed);
+}
+
+/* ---- レポート ---- */
+function fmtDay(iso){
+  const d = new Date(iso);
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+}
+
+function buildReport(cycle){
+  const out = [];
+  out.push(`# ${T.reportTitle}`, '');
+  out.push(`**${T.reportRange}**: ${fmtDay(cycle.start)} 〜 ${fmtDay(cycle.end)}`);
+  out.push(`**${T.reportCases}**: ${cycle.caseIds.length}`, '', '---', '');
+
+  cycle.caseIds.forEach(id => {
+    const c = state.cases.find(x => x.id === id);
+    if(!c) return;                       // 消された案件は飛ばす
+    const meta = [c.type, c.client].filter(Boolean).join(' · ');
+    out.push(`## ${c.name}`);
+    if(meta) out.push(`_${meta}_`);
+    out.push('');
+    const logs = (c.logs || []).slice().sort((a,b) => new Date(a.ts) - new Date(b.ts));
+    if(!logs.length){
+      out.push(T.reportNoLogs, '');
+    }else{
+      logs.forEach(l => out.push(`- \`${fmtDay(l.ts)}\` ${l.text}`));
+      out.push('');
+    }
+    if(c.memo) out.push(`> ${c.memo.replace(/\n/g, '\n> ')}`, '');
+  });
+  return out.join('\n');
+}
+
+async function exportReport(cycle){
+  const md   = buildReport(cycle);
+  const name = `babos-report-${fmtDay(cycle.end)}.md`;
+  const t    = TA();
+
+  if(!t?.fs){                            // ブラウザではダウンロード
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([md], { type:'text/markdown' }));
+    a.download = name; a.click();
+    URL.revokeObjectURL(a.href);
+    return;
+  }
+
+  /* 保存先を訊く。ただし capabilities は appdata しか許していないので、
+     選ばれた場所に書けるとは限らない。落ちたら appdata に置いて場所を伝える。 */
+  try{
+    const path = t.dialog?.save
+      ? await t.dialog.save({ defaultPath: name,
+          filters: [{ name:'Markdown', extensions:['md'] }] })
+      : null;
+    if(path){
+      await t.fs.writeTextFile(path, md);
+      await ask(T.reportSaved(path));
+      return;
+    }
+  }catch(e){
+    console.warn('[babos] save dialog path not writable, falling back:', e);
+  }
+
+  try{
+    await ensureDir(t);
+    await t.fs.writeTextFile(name, md, { baseDir: t.fs.BaseDirectory.AppData });
+    const dir = await t.path.appDataDir().catch(() => '');
+    const sep = dir && !dir.endsWith('/') ? '/' : '';
+    await ask(T.reportSaved(dir ? dir + sep + name : name));
+  }catch(e){
+    console.warn('[babos] report write failed:', e);
+    await ask(T.reportFailed);
+  }
+}
+
 function renderChips(){
   const counts = { all:0, active:0, idle:0, near:0 };
   state.cases.filter(c=>!c.done).forEach(c=>{ counts.all++; counts[statusOf(c)]++; });
@@ -1364,7 +1554,7 @@ function renderList(){
 }
 
 function renderAll(){
-  renderChips(); renderBubbles(); renderDetail(); renderSide(); renderHead(); renderList();
+  renderChips(); renderCycle(); renderBubbles(); renderDetail(); renderSide(); renderHead(); renderList();
   if($('modalSettings').classList.contains('on')) renderSettings();
 }
 
@@ -1496,9 +1686,28 @@ async function ask(msg){
 function setStep(c, n){
   const next = (c.step === n) ? n-1 : n;
   if(next >= 10){ finish(c); return; }
+  const was = c.done;
   c.step = Math.max(0, next);
   c.done = false;
+  if(was) cycleRemove(c.id);      // 完了を取り消したら点も消す
   touch(c); save(); renderAll();
+}
+
+/* 気泡が飛ぶ時間。CSS の float-away と必ず揃える */
+const FLY_MS = 1400;
+const DOT = 8, DOT_GAP = 10, DOT_VGAP = 6;
+
+/* 次に点くランプの中心座標。まだ 0 個なら一段目の左端。 */
+function nextDotPoint(){
+  // 座標の基準は内側の枠。外側は右端まで伸びているので使えない
+  const box = ($('cycle').querySelector('.cycle-inner') || $('cycle')).getBoundingClientRect();
+  const n   = Math.min(state.cycle?.caseIds?.length || 0, CYCLE_SIZE - 1);
+  const per = perRow();          // 一段か二段かで行き先が変わる
+  return {
+    // 右端が起点。左へ数えていく
+    x: box.right - (n % per) * (DOT + DOT_GAP) - DOT / 2,
+    y: box.top   + Math.floor(n / per) * (DOT + DOT_VGAP) + DOT / 2
+  };
 }
 
 async function finish(c){
@@ -1506,12 +1715,26 @@ async function finish(c){
   c.step = 10; touch(c);
   const el = bubEls.get(c.id);
   if(el){
+    // 気泡の中心からランプの中心までの差分を渡す。
+    // 縮小率も渡さないと、大きい気泡が点の大きさで着地しない。
+    const r = el.getBoundingClientRect();
+    const p = nextDotPoint();
+    el.style.setProperty('--fx', (p.x - (r.left + r.width  / 2)) + 'px');
+    el.style.setProperty('--fy', (p.y - (r.top  + r.height / 2)) + 'px');
+    el.style.setProperty('--fs', Math.max(0.04, DOT / Math.max(r.width, 1)));
     el.classList.add('leaving');
     save();
-    setTimeout(()=>{ c.done = true; save(); renderAll(); }, 2000);
+    setTimeout(()=>{ c.done = true; markDone(c.id); }, FLY_MS);
   }else{
-    c.done = true; save(); renderAll();
+    c.done = true; markDone(c.id);
   }
+}
+
+/* 完了の後始末。満了したら封をして訊く。 */
+function markDone(id){
+  const full = cycleAdd(id);
+  save(); renderAll();
+  if(full) cycleComplete();
 }
 
 /* その場で名前を書き換える。編集中は renderAll を呼ばない（DOM ごと消えるため） */
@@ -1889,6 +2112,12 @@ $('lAdd').addEventListener('click', () => {
   c.links.push({ id:uid(), type, url });
   touch(c); save(); closeModals(); renderAll();
 });
+
+/* 既存のデータには cycle が無い。**既に done の案件を遡って点けない**——
+   過去ぶんをまとめて数えると、初回起動でいきなり満了して
+   意味のないレポートが出る。今日から数え始める。 */
+if(!state.cycle) state.cycle = { start: new Date().toISOString(), caseIds: [] };
+if(!state.cycles) state.cycles = [];
 
 /* 初回に入れたサンプル、およびタグ登録簿の初期化をここで確定させる */
 if(!state.tags){
