@@ -448,6 +448,23 @@ button.stage:hover{border-color:var(--accent-hi);color:var(--accent-hi)}
 .seg:hover{border-color:var(--fog)}
 .seg.on{border-color:var(--text);color:var(--text)}
 .sheet-foot{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+
+/* 確認・通知ダイアログ。**OS の confirm を使わない理由が二つある：**
+   ① 見た目がアプリから浮く（配色もフォントも合わない）
+   ② Tauri の window.confirm は非同期で、同期の戻り値を信じると
+      「押したら即削除」になる。自前で描けばその穴自体が無くなる。 */
+.ask-sheet{width:360px}
+.ask-msg{font-size:14px;line-height:1.65;white-space:pre-wrap;
+  word-break:break-word;color:var(--text)}
+.ask-foot{display:flex;gap:10px;justify-content:flex-end;margin-top:22px}
+.ask-btn{height:34px;padding:0 18px;border-radius:var(--pill);
+  border:1px solid var(--line);background:transparent;color:var(--text);
+  font-family:var(--font-body);font-size:13px;transition:.15s}
+.ask-btn:hover{border-color:var(--fog)}
+.ask-btn.primary{background:var(--accent);border-color:var(--accent);
+  color:var(--on-accent)}
+.ask-btn.primary:hover{background:var(--accent-hi);border-color:var(--accent-hi);
+  color:var(--on-accent)}
 .sheet-note{color:var(--fog);font-size:13px;line-height:1.7}
 
 /* case detail window */
@@ -581,6 +598,16 @@ body.saver .saver-clock{opacity:.5}
 
 <!-- Add link -->
 <div class="saver-clock" id="saverClock"><span class="t"></span><span class="n"></span></div>
+
+<div class="modal" id="modalAsk">
+  <div class="sheet ask-sheet">
+    <div class="ask-msg" id="askMsg"></div>
+    <div class="ask-foot">
+      <button class="ask-btn" id="askNo"></button>
+      <button class="ask-btn primary" id="askYes"></button>
+    </div>
+  </div>
+</div>
 
 <div class="modal" id="modalLink">
   <div class="sheet">
@@ -716,7 +743,7 @@ const STRINGS = {
     phUrl:'https://…  or  file:///Users/…',
     notes:'Notes', fullLog:'Work log (read only)',
     phMemo:'Anything worth keeping about this case — direction, decisions, things to watch.',
-    save:'Save', saved:'Saved', close:'Close', cancel:'Cancel', add:'Add',
+    save:'Save', saved:'Saved', close:'Close', cancel:'Cancel', add:'Add', confirmOk:'OK',
     screensaver:'Screen saver', ssOff:'Off', minUnit:' min',
     saverCases:' active cases',
     renameHint:'Click to rename', renameHint2:'Double-click to rename',
@@ -768,7 +795,7 @@ const STRINGS = {
     phUrl:'https://… または file:///Users/…',
     notes:'メモ', fullLog:'作業ログ（表示のみ）',
     phMemo:'この案件について残しておきたいこと——方向性、決定事項、注意点など。',
-    save:'保存', saved:'保存しました', close:'閉じる', cancel:'キャンセル', add:'追加',
+    save:'保存', saved:'保存しました', close:'閉じる', cancel:'キャンセル', add:'追加', confirmOk:'OK',
     screensaver:'スクリーンセーバー', ssOff:'オフ', minUnit:'分',
     saverCases:' 件 進行中',
     renameHint:'クリックで名称を変更', renameHint2:'ダブルクリックで名称を変更',
@@ -820,7 +847,7 @@ const STRINGS = {
     phUrl:'https://… 或 file:///Users/…',
     notes:'備註', fullLog:'工作紀錄（唯讀）',
     phMemo:'關於這個案件值得記下來的事——方向、決定、要注意的地方。',
-    save:'儲存', saved:'已儲存', close:'關閉', cancel:'取消', add:'新增',
+    save:'儲存', saved:'已儲存', close:'關閉', cancel:'取消', add:'新增', confirmOk:'確定',
     screensaver:'螢幕保護', ssOff:'關閉', minUnit:' 分鐘',
     saverCases:' 件進行中',
     renameHint:'點一下改名稱', renameHint2:'點兩下改名稱',
@@ -1221,7 +1248,10 @@ async function cycleComplete(){
   state.cycle = { start: new Date().toISOString(), caseIds: [] };
   save(); renderAll();
 
-  if(await ask(T.cycleFull(CYCLE_SIZE))) await exportReport(sealed);
+  /* 匯出成功才把那一巡的案件清掉。沒按匯出、或寫檔失敗，就原封不動留著。 */
+  if(await ask(T.cycleFull(CYCLE_SIZE))){
+    if(await exportReport(sealed)) purgeCycleCases(sealed);
+  }
 }
 
 /* ---- レポート ---- */
@@ -1266,7 +1296,7 @@ async function exportReport(cycle){
     a.href = URL.createObjectURL(new Blob([md], { type:'text/markdown' }));
     a.download = name; a.click();
     URL.revokeObjectURL(a.href);
-    return;
+    return true;
   }
 
   /* 保存先を訊く。ただし capabilities は appdata しか許していないので、
@@ -1278,8 +1308,8 @@ async function exportReport(cycle){
       : null;
     if(path){
       await t.fs.writeTextFile(path, md);
-      await ask(T.reportSaved(path));
-      return;
+      await ask(T.reportSaved(path), { alert:true });
+      return true;
     }
   }catch(e){
     console.warn('[babos] save dialog path not writable, falling back:', e);
@@ -1290,11 +1320,24 @@ async function exportReport(cycle){
     await t.fs.writeTextFile(name, md, { baseDir: t.fs.BaseDirectory.AppData });
     const dir = await t.path.appDataDir().catch(() => '');
     const sep = dir && !dir.endsWith('/') ? '/' : '';
-    await ask(T.reportSaved(dir ? dir + sep + name : name));
+    await ask(T.reportSaved(dir ? dir + sep + name : name), { alert:true });
+    return true;
   }catch(e){
     console.warn('[babos] report write failed:', e);
-    await ask(T.reportFailed);
+    await ask(T.reportFailed, { alert:true });
+    return false;
   }
+}
+
+/* 一巡ぶんの案件をまとめて消す。**レポートが実際に書けた時だけ呼ぶこと。**
+   封じた cycles の中には id だけが残るが、buildReport は
+   見つからない案件を飛ばすので、後から読み返しても壊れない。 */
+function purgeCycleCases(cycle){
+  const ids = new Set(cycle.caseIds);
+  state.cases = state.cases.filter(c => !ids.has(c.id));
+  if(selectedId && ids.has(selectedId)) selectedId = null;
+  if(!state.cases.length) mode = 'new';
+  save(); renderAll();
 }
 
 function renderChips(){
@@ -1674,14 +1717,45 @@ function applyLang(l){
 /* Tauri の confirm / fs は async。ブラウザでも動くようラップする */
 const TA = () => window.__TAURI__ || null;
 
-async function ask(msg){
-  const t = TA();
-  if(t?.dialog?.confirm){
-    try{ return await t.dialog.confirm(msg, { title:'Babos', kind:'warning' }); }
-    catch(e){ return window.confirm(msg); }
-  }
-  return window.confirm(msg);
+/* 自前の確認ダイアログ。OS の confirm には戻らない —— 見た目が浮くのと、
+   Tauri の window.confirm が非同期で「押したら即実行」になる穴を避けるため。
+
+   opts.danger  … 実行ボタンを赤くする（削除など）
+   opts.alert   … 通知用。ボタンは一つだけ、戻り値は常に true */
+let askResolve = null;
+function askClose(v){
+  $('modalAsk').classList.remove('on');
+  const r = askResolve; askResolve = null;
+  if(r) r(v);
 }
+function ask(msg, opts){
+  const o = opts || {};
+  return new Promise(resolve => {
+    askResolve = resolve;
+    $('askMsg').textContent = msg;
+    const yes = $('askYes'), no = $('askNo');
+    yes.textContent = o.danger ? T.deleteCase : T.confirmOk;
+    yes.classList.add('primary');   // 削除でも色は変えない —— 本人の指定
+    no.textContent = T.cancel;
+    no.style.display = o.alert ? 'none' : '';
+    $('modalAsk').classList.add('on');
+    yes.focus();
+  });
+}
+
+document.addEventListener('click', e => {
+  if(e.target.closest('#askYes')) askClose(true);
+  else if(e.target.closest('#askNo')) askClose(false);
+  else if(e.target.id === 'modalAsk') askClose(false);   // 外側を押したら取消
+});
+
+/* Esc で取消、Enter で実行。**askResolve があるときだけ効かせる** ——
+   他のモーダルのキー操作を奪わないため。 */
+document.addEventListener('keydown', e => {
+  if(!askResolve) return;
+  if(e.key === 'Escape'){ e.preventDefault(); e.stopPropagation(); askClose(false); }
+  else if(e.key === 'Enter'){ e.preventDefault(); e.stopPropagation(); askClose(true); }
+}, true);
 
 function setStep(c, n){
   const next = (c.step === n) ? n-1 : n;
@@ -1889,7 +1963,7 @@ document.addEventListener('click', async e => {
   if(tagDel){
     const key = tagDel.dataset.tagdel, value = tagDel.dataset.tagval;
     const n = usageOf(key, value);
-    if(n && !await ask(T.confirmTagDelete(value, n))) return;
+    if(n && !await ask(T.confirmTagDelete(value, n), { danger:true })) return;
     state.tags = state.tags || { type:[], client:[] };
     state.tags[key] = (state.tags[key]||[]).filter(v => v !== value);
     state.cases.forEach(c => { if(c[key] === value) c[key] = ''; });
@@ -1970,7 +2044,7 @@ document.addEventListener('click', async e => {
   if(t.closest('#addLink')){ openModal('modalLink'); return; }
   if(t.closest('#delCase')){
     const c = current(); if(!c) return;
-    if(await ask(T.confirmDelete(c.name))){
+    if(await ask(T.confirmDelete(c.name), { danger:true })){
       state.cases = state.cases.filter(x=>x.id!==c.id);
       selectedId = null;
       if(!state.cases.length) mode = 'new';
@@ -2069,6 +2143,23 @@ function openModal(id){
 function closeModals(){
   document.querySelectorAll('.modal').forEach(m=>m.classList.remove('on'));
 }
+
+/* 完了した案件は泡にも出ないので、右側パネルからは開けない。
+   一覧で右クリックして消せるようにする。**確認は必ず出す。** */
+document.addEventListener('contextmenu', async e => {
+  const row = e.target.closest('.l-row');
+  if(!row) return;
+  const c = state.cases.find(x => x.id === row.dataset.id);
+  if(!c || !c.done) return;             // 進行中の案件は対象外
+  e.preventDefault();
+  if(await ask(T.confirmDelete(c.name), { danger:true })){
+    state.cases = state.cases.filter(x => x.id !== c.id);
+    cycleRemove(c.id);                  // まだ数えている途中なら点も消す
+    if(selectedId === c.id) selectedId = null;
+    if(!state.cases.length) mode = 'new';
+    save(); renderAll();
+  }
+});
 
 /* 案件ごとの詳細ウィンドウ */
 let detailId = null;
