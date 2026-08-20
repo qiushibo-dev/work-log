@@ -53,6 +53,28 @@ jobs:
           prerelease: false
           args: ${{ matrix.args }}
 
+      # 🔴 **macOS は .zip も要る。** tauri-action は .dmg しか作らないが、
+      # Chrome は GitHub の署名付き CDN から dmg を落とすとき
+      # Content-Disposition ではなく URL のパス（UUID）でファイル名を決めるので、
+      # 拡張子の無いファイルが保存されて開けなくなる。Safari は正しく扱う。
+      # ダウンロード欄には「完了 12.3 MB」と出るので気づきにくい。
+      # landing page 側も zip を優先して探しているので、無いと dmg に落ちてしまう。
+      - name: macOS の .app を zip に固める
+        if: matrix.platform == 'macos-latest' && startsWith(github.ref, 'refs/tags/')
+        run: |
+          APP=$(find src-tauri/target -type d -name 'Babos.app' -path '*/release/bundle/macos/*' | head -1)
+          if [ -z "$APP" ]; then echo "::error::Babos.app が見つからない"; exit 1; fi
+          VER="${GITHUB_REF_NAME#v}"
+          # ditto なら署名とリソースフォークが保たれる。zip コマンドでは壊れる
+          ditto -c -k --sequesterRsrc --keepParent "$APP" "Babos_${VER}_macos.zip"
+          ls -la "Babos_${VER}_macos.zip"
+
+      - name: zip を Release に足す
+        if: matrix.platform == 'macos-latest' && startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$GITHUB_REF_NAME" "Babos_${GITHUB_REF_NAME#v}_macos.zip" --clobber
+
       # 手動実行のときは Release を作らないので、成果物をここに残す
       - if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
